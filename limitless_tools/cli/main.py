@@ -9,6 +9,8 @@ from limitless_tools.config.paths import default_data_dir
 from limitless_tools.config.env import load_env
 from limitless_tools.config.logging import setup_logging
 import logging
+import sys
+from zoneinfo import ZoneInfo
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -32,7 +34,11 @@ def _build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--date", type=str)
     sync.add_argument("--start", type=str)
     sync.add_argument("--end", type=str)
-    sync.add_argument("--timezone", type=str)
+    sync.add_argument(
+        "--timezone",
+        type=str,
+        help="IANA timezone name (e.g., 'America/Los_Angeles', 'UTC')."
+    )
     sync.add_argument("--starred-only", action="store_true", default=False)
     sync.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
@@ -81,6 +87,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 0
 
     if args.command == "sync":
+        # Validate timezone if provided
+        if args.timezone:
+            try:
+                _ = ZoneInfo(args.timezone)
+            except Exception:
+                sys.stderr.write(
+                    f"Invalid timezone: {args.timezone}. Use an IANA name like 'America/Los_Angeles' or 'UTC'.\n"
+                )
+                return 2
         service = LifelogService(
             api_key=os.getenv("LIMITLESS_API_KEY"),
             api_url=os.getenv("LIMITLESS_API_URL"),
