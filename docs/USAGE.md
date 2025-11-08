@@ -62,6 +62,39 @@ python -m limitless_tools.cli.main fetch \
 # limitless fetch --limit 10 --direction desc
 ```
 
+### Configuration file (MVP)
+
+You can store defaults in a user config TOML and select profiles via `--profile`:
+
+- Default path (varies by OS):
+  - macOS: `~/Library/Application Support/limitless-tools/config.toml`
+  - Linux: `~/.config/limitless-tools/config.toml`
+  - Windows: `%APPDATA%/limitless-tools/config.toml`
+- Override path with `--config`.
+- Precedence: CLI flags > environment variables > config file > built-in defaults.
+
+Example `config.toml`:
+
+```
+[default]
+api_key = "YOUR_API_KEY"
+data_dir = "/path/to/lifelogs"
+timezone = "UTC"
+batch_size = 50
+
+[work]
+api_key = "WORK_API_KEY"
+data_dir = "/work/data/lifelogs"
+timezone = "America/Los_Angeles"
+batch_size = 100
+```
+
+Use a profile:
+
+```
+python -m limitless_tools.cli.main --profile work fetch --limit 5
+```
+
 - Sync by date or date range (writes `index.json` and updates incremental state):
 
 ```

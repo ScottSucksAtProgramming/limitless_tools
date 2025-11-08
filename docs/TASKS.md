@@ -17,10 +17,10 @@ Status: living document; update as work progresses. Use TDD for every task.
  - Improve error messages for non‑retryable 4xx/5xx
  - Document/guard timezone behavior in CLI help; validate IANA names
  - Performance: tune batch size defaults; add `--batch-size`
+ - User-scoped config file (TOML via platformdirs) with precedence: CLI flags > env > config; support `--config`/`--profile` (MVP)
 
 ## In Progress / Next Up
  - Document/guard timezone behavior in CLI help; validate IANA names
-- User-scoped config file (TOML via platformdirs) with precedence: CLI flags > env > config; support `--config`/`--profile` (MVP)
 
 ## Backlog
 - Local search over index (by title/date/star/keywords)
