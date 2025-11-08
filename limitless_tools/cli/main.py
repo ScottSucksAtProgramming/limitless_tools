@@ -6,10 +6,14 @@ from typing import List, Optional
 
 from limitless_tools.services.lifelog_service import LifelogService
 from limitless_tools.config.paths import default_data_dir
+from limitless_tools.config.env import load_env
+from limitless_tools.config.logging import setup_logging
+import logging
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="limitless", description="Limitless Tools CLI")
+    parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
     sub = parser.add_subparsers(dest="command")
 
     fetch = sub.add_parser("fetch", help="Fetch lifelogs")
@@ -50,8 +54,17 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
+    # Ensure .env and related environment variables are loaded before parsing
+    load_env()
     parser = _build_parser()
     args = parser.parse_args(args=argv)
+    setup_logging(verbose=bool(getattr(args, "verbose", False)))
+
+    log = logging.getLogger("limitless_tools.cli")
+    log.info("cli_start", extra={"event": "cli_start", "command": args.command})
+    if getattr(args, "verbose", False):
+        # Emit a debug message for tests/diagnostics
+        log.debug("parsed_args", extra={"args": vars(args)})
 
     if args.command == "fetch":
         service = LifelogService(

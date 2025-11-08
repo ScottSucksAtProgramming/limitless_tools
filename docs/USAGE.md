@@ -16,7 +16,7 @@ python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 ```
 
-Optional: copy `.env.example` to `.env` and fill in variables, or export environment variables in your shell.
+Optional: copy `.env.example` to `.env` and fill in variables. The CLI automatically loads `.env` from the current directory (or parents) on startup, so environment-based defaults like `LIMITLESS_DATA_DIR` and `LIMITLESS_API_KEY` are honored without extra flags. You can also export environment variables in your shell.
 
 ## Editable install (optional)
 
