@@ -27,6 +27,16 @@ def _build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--starred-only", action="store_true", default=False)
     sync.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
+    lst = sub.add_parser("list", help="List local lifelogs")
+    lst.add_argument("--date", type=str)
+    lst.add_argument("--starred-only", action="store_true", default=False)
+    lst.add_argument("--json", action="store_true", default=False, dest="as_json")
+    lst.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
+    exp = sub.add_parser("export-markdown", help="Export markdown from local lifelogs")
+    exp.add_argument("--limit", type=int, default=1)
+    exp.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
     return parser
 
 
@@ -61,6 +71,32 @@ def main(argv: Optional[List[str]] = None) -> int:
             timezone=args.timezone,
             is_starred=True if args.starred_only else None,
         )
+        return 0
+
+    if args.command == "list":
+        service = LifelogService(
+            api_key=os.getenv("LIMITLESS_API_KEY"),
+            api_url=os.getenv("LIMITLESS_API_URL"),
+            data_dir=args.data_dir,
+        )
+        items = service.list_local(date=args.date, is_starred=True if args.starred_only else None)
+        if args.as_json:
+            import json
+            print(json.dumps(items, ensure_ascii=False, indent=2))
+        else:
+            for it in items:
+                print(f"{it.get('startTime')} {it.get('id')} {it.get('title')}")
+        return 0
+
+    if args.command == "export-markdown":
+        service = LifelogService(
+            api_key=os.getenv("LIMITLESS_API_KEY"),
+            api_url=os.getenv("LIMITLESS_API_URL"),
+            data_dir=args.data_dir,
+        )
+        text = service.export_markdown(limit=args.limit)
+        if text:
+            print(text)
         return 0
 
     parser.print_help()

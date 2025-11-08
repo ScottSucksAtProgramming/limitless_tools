@@ -104,3 +104,76 @@ class LifelogService:
         base.mkdir(parents=True, exist_ok=True)
         (base / "index.json").write_text(json.dumps(index_rows, ensure_ascii=False, indent=2))
         return saved_paths
+
+    def list_local(
+        self,
+        *,
+        date: str | None = None,
+        is_starred: bool | None = None,
+    ) -> list[dict[str, object]]:
+        """List locally stored lifelogs, optionally filtered by date (YYYY-MM-DD) and starred."""
+        from pathlib import Path
+        import json
+
+        base = Path(self.data_dir or "")
+        results: list[dict[str, object]] = []
+
+        # If we have an index, prefer it; else scan files
+        idx_path = base / "index.json"
+        items: list[dict[str, object]] = []
+        if idx_path.exists():
+            try:
+                items = json.loads(idx_path.read_text())
+            except Exception:
+                items = []
+        else:
+            for p in base.rglob("lifelog_*.json"):
+                try:
+                    obj = json.loads(p.read_text())
+                except Exception:
+                    continue
+                items.append(
+                    {
+                        "id": obj.get("id"),
+                        "title": obj.get("title"),
+                        "startTime": obj.get("startTime"),
+                        "endTime": obj.get("endTime"),
+                        "isStarred": obj.get("isStarred"),
+                        "updatedAt": obj.get("updatedAt"),
+                        "path": str(p),
+                    }
+                )
+
+        for it in items:
+            if date and (str(it.get("startTime")) or "")[:10] != date:
+                continue
+            if is_starred is not None and bool(it.get("isStarred")) != is_starred:
+                continue
+            results.append(it)
+
+        return results
+
+    def export_markdown(self, *, limit: int = 1) -> str:
+        """Return concatenated markdown from the latest N local lifelogs (by startTime)."""
+        from pathlib import Path
+        import json
+
+        base = Path(self.data_dir or "")
+        entries: list[dict[str, object]] = []
+        for p in base.rglob("lifelog_*.json"):
+            try:
+                obj = json.loads(p.read_text())
+            except Exception:
+                continue
+            entries.append(obj)
+
+        entries.sort(key=lambda x: str(x.get("startTime") or ""))
+        entries = entries[-limit:] if limit is not None else entries
+
+        parts: list[str] = []
+        for e in entries:
+            md = e.get("markdown")
+            if isinstance(md, str) and md:
+                parts.append(md)
+
+        return "\n\n".join(parts)
