@@ -12,7 +12,7 @@
 
 ## Build, Test, and Development Commands
 - Setup: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt`
-- Test: `pytest -q` (filter with `-k pattern`).
+- Test: `python -m pytest -q` (filter with `-k pattern`). Using `python -m` ensures the venv’s Python runs pytest.
 - Lint: `ruff check .` (configured in `pyproject.toml`).
 - Types: `mypy .` (Python 3.11, strict for src; relaxed for tests).
 - Run CLI via module: `python -m limitless_tools.cli.main fetch --limit 5`

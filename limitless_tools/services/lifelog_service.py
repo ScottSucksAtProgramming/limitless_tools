@@ -29,7 +29,7 @@ class LifelogService:
         end: Optional[str] = None,
         timezone: Optional[str] = None,
         is_starred: Optional[bool] = None,
-        batch_size: int = 10,
+        batch_size: int = 50,
     ) -> List[str]:
         """Fetch lifelogs from API and save them to JSON files. Returns saved file paths."""
 
@@ -63,7 +63,7 @@ class LifelogService:
         end: str | None = None,
         timezone: str | None = None,
         is_starred: bool | None = None,
-        batch_size: int = 10,
+        batch_size: int = 50,
     ) -> list[str]:
         client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
         repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")

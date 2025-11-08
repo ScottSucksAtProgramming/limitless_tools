@@ -28,6 +28,7 @@ def _build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--include-headings", dest="include_headings", action="store_true")
     fetch.add_argument("--no-include-headings", dest="include_headings", action="store_false")
     fetch.set_defaults(include_headings=True)
+    fetch.add_argument("--batch-size", type=int, default=50, help="Page size to use when fetching (default: 50)")
     fetch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
     sync = sub.add_parser("sync", help="Sync lifelogs for a date or range")
@@ -40,6 +41,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="IANA timezone name (e.g., 'America/Los_Angeles', 'UTC')."
     )
     sync.add_argument("--starred-only", action="store_true", default=False)
+    sync.add_argument("--batch-size", type=int, default=50, help="Page size to use when syncing (default: 50)")
     sync.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
     lst = sub.add_parser("list", help="List local lifelogs")
@@ -83,6 +85,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             direction=args.direction,
             include_markdown=args.include_markdown,
             include_headings=args.include_headings,
+            batch_size=max(1, int(args.batch_size)),
         )
         return 0
 
@@ -107,6 +110,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             end=args.end,
             timezone=args.timezone,
             is_starred=True if args.starred_only else None,
+            batch_size=max(1, int(args.batch_size)),
         )
         return 0
 

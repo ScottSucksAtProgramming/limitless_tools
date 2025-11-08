@@ -50,7 +50,7 @@ class LimitlessClient:
         end: Optional[str] = None,
         timezone: Optional[str] = None,
         is_starred: Optional[bool] = None,
-        batch_size: int = 10,
+        batch_size: int = 50,
         cursor: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
