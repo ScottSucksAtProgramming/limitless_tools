@@ -93,6 +93,46 @@ Use a profile:
 python -m limitless_tools.cli.main --profile work fetch --limit 5
 ```
 
+## Configure via CLI
+
+You can write or update your config file non-interactively:
+
+```
+# Write to default path (~/limitless_tools/config/config.toml), default profile
+python -m limitless_tools.cli.main configure \
+  --api-key YOUR_API_KEY \
+  --data-dir /path/to/lifelogs \
+  --timezone UTC \
+  --batch-size 50
+
+# Write to a custom file and profile
+python -m limitless_tools.cli.main --config /tmp/cfg.toml --profile work configure \
+  --api-key WORK_API_KEY --data-dir /work/lifelogs --batch-size 100
+```
+
+## JSON Output Examples
+
+```
+# Fetch with JSON output
+python -m limitless_tools.cli.main fetch --limit 2 --json
+[
+  {"id": "a", "title": "...", "startTime": "...", "endTime": "...", "path": "/.../lifelog_a.json"},
+  {"id": "b", "title": "...", "startTime": "...", "endTime": "...", "path": "/.../lifelog_b.json"}
+]
+
+# Sync with JSON output
+python -m limitless_tools.cli.main sync --start 2025-01-01 --end 2025-01-02 --json
+{
+  "saved_count": 2,
+  "lastCursor": "CUR123",
+  "lastEndTime": "2025-01-02T01:00:00Z",
+  "items": [
+    {"id": "a", "title": "...", "startTime": "...", "endTime": "...", "path": "/.../lifelog_a.json"},
+    {"id": "b", "title": "...", "startTime": "...", "endTime": "...", "path": "/.../lifelog_b.json"}
+  ]
+}
+```
+
 - Sync by date or date range (writes `index.json` and updates incremental state):
 
 ```

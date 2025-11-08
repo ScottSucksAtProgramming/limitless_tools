@@ -63,6 +63,13 @@ def _build_parser() -> argparse.ArgumentParser:
     fa.add_argument("--lifelog-id", required=True)
     fa.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
+    cfgp = sub.add_parser("configure", help="Create or update user config (TOML)")
+    cfgp.add_argument("--api-key", type=str)
+    cfgp.add_argument("--api-url", type=str)
+    cfgp.add_argument("--data-dir", type=str)
+    cfgp.add_argument("--timezone", type=str)
+    cfgp.add_argument("--batch-size", type=int)
+
     return parser
 
 
@@ -229,6 +236,29 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.command == "fetch-audio":
         print("Audio endpoints are not yet documented; see docs/AUDIO.md")
         return 2
+
+    if args.command == "configure":
+        # Compute target config path and profile
+        from limitless_tools.config.config import load_config as _load_cfg, save_config as _save_cfg
+        target_path = config_path or default_config_path()
+        target_profile = profile_name
+        # Load existing config
+        current = _load_cfg(target_path)
+        prof_dict = current.get(target_profile, {}) if current else {}
+        # Apply updates from flags (ignore None values)
+        updates = {}
+        for k in ["api_key", "api_url", "data_dir", "timezone", "batch_size"]:
+            v = getattr(args, k, None)
+            if v is not None:
+                updates[k] = v
+        prof_dict.update(updates)
+        if not current:
+            current = {target_profile: prof_dict}
+        else:
+            current[target_profile] = prof_dict
+        _save_cfg(target_path, current)
+        print(f"Wrote config to {target_path}")
+        return 0
 
     parser.print_help()
     return 2

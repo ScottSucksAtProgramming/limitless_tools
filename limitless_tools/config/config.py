@@ -87,3 +87,32 @@ def get_profile(config: Dict[str, Dict[str, Any]], profile: Optional[str]) -> Di
         return config.get(profile, {}) or {}
     # If TOML parser returns top-level keys under other shape, fallback
     return config.get("default", {}) or {}
+
+
+def save_config(path: str, config: Dict[str, Dict[str, Any]]) -> None:
+    """Write the config dict to TOML at path, creating parent directories.
+
+    Minimal TOML writer supporting strings, ints, floats, and booleans.
+    """
+    import os as _os
+    from pathlib import Path as _Path
+
+    def _format(v: Any) -> str:
+        if isinstance(v, bool):
+            return "true" if v else "false"
+        if isinstance(v, (int, float)):
+            return str(v)
+        # default to string; escape double quotes
+        s = str(v).replace("\"", "\\\"")
+        return f'"{s}"'
+
+    p = _Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    lines: list[str] = []
+    for section in sorted(config.keys()):
+        lines.append(f"[{section}]")
+        for key, value in config[section].items():
+            lines.append(f"{key} = {_format(value)}")
+        lines.append("")
+    text = "\n".join(lines).rstrip() + "\n"
+    p.write_text(text, encoding="utf-8")
