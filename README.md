@@ -37,8 +37,27 @@ python3 -m limitless_tools.cli.main fetch \
   --limit 10 \
   --direction desc \
   --include-markdown \
-  --include-headings
+    --include-headings
 ```
+
+## Configuration
+
+- Example config file: `config.toml.example` in this repo.
+  - Default user path: `~/limitless_tools/config/config.toml`
+  - Copy and edit: `mkdir -p ~/limitless_tools/config && cp config.toml.example ~/limitless_tools/config/config.toml`
+  - Or pass a custom file with `--config /path/to/config.toml`.
+- You can also write/update the config via CLI:
+
+```
+python -m limitless_tools.cli.main configure \
+  --api-key YOUR_API_KEY \
+  --data-dir ~/limitless_tools/data/lifelogs \
+  --output-dir ~/limitless_tools/exports \
+  --timezone UTC \
+  --batch-size 50
+```
+
+Notes: You can define multiple profiles (e.g., `[default]`, `[work]`) and select with `--profile work`. Precedence: CLI flags > environment variables > config file > built‑in defaults.
 
 ## Notes
 
@@ -56,4 +75,3 @@ Run locally:
 ruff check .
 mypy .
 ```
-
