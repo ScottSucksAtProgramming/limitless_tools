@@ -194,6 +194,21 @@ python -m limitless_tools.cli.main export-csv \
   --output /tmp/lifelogs_2025-12-01.csv
 ```
 
+## Bulk export script
+
+For exporting many days at once (e.g., to an Obsidian vault), use the helper script:
+
+```
+python scripts/export_markdown_range.py \
+  --start 2025-01-01 \
+  --end 2025-12-31 \
+  --data-dir /path/to/lifelogs \
+  --out-dir /path/to/obsidian/vault \
+  --frontmatter       # optional
+
+# Writes files like: /path/to/obsidian/vault/2025-01-01_lifelogs.md
+```
+
 ## Notes
 
 - The `sync` command maintains an incremental state file at `../state/lifelogs_sync.json` relative to your lifelogs data dir. On subsequent runs, if no `--start` is provided, it uses the last recorded end time as `start` to avoid re-fetching.
