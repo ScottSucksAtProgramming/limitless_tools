@@ -63,8 +63,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     log = logging.getLogger("limitless_tools.cli")
     log.info("cli_start", extra={"event": "cli_start", "command": args.command})
     if getattr(args, "verbose", False):
-        # Emit a debug message for tests/diagnostics
-        log.debug("parsed_args", extra={"args": vars(args)})
+        # Emit a debug message for tests/diagnostics (avoid reserved LogRecord keys)
+        log.debug("parsed_args", extra={"cli_args": vars(args)})
 
     if args.command == "fetch":
         service = LifelogService(

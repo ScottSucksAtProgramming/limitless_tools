@@ -16,7 +16,8 @@ def load_env() -> None:
     if find_dotenv and load_dotenv:
         env_path = find_dotenv(usecwd=True)
         if env_path:
-            load_dotenv(env_path)
+            # Override existing process env so tests and CLI defaults honor .env
+            load_dotenv(env_path, override=True)
             return
     # fallback: simple parser for .env in CWD
     try:
@@ -28,7 +29,7 @@ def load_env() -> None:
                     if not line or line.startswith("#") or "=" not in line:
                         continue
                     k, v = line.split("=", 1)
-                    os.environ.setdefault(k.strip(), v.strip())
+                    os.environ[k.strip()] = v.strip()
     except Exception:
         return
 

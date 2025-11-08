@@ -106,7 +106,9 @@ class LimitlessClient:
                         delay = self.backoff_factor * (2 ** (attempt - 1))
                     self.sleep_fn(delay)
                     continue
-                raise RuntimeError(f"HTTP error fetching lifelogs (status {status})")
+                # Build informative error message for non-retryable errors
+                detail = self._error_detail(resp)
+                raise RuntimeError(f"HTTP {status} error fetching lifelogs: {detail}")
 
             body = resp.json()
             page_items: List[Dict[str, Any]] = body.get("data", {}).get("lifelogs", []) or []
@@ -122,3 +124,33 @@ class LimitlessClient:
                 break
 
         return collected
+
+    def _error_detail(self, resp: Any) -> str:
+        """Extract an informative error message from a failed HTTP response."""
+        # Try JSON body first
+        try:
+            body = resp.json()
+        except Exception:  # pragma: no cover - exercised implicitly when non-JSON
+            body = None
+        # Common shapes: {"error": {"code": "X", "message": "..."}} or {"message": "..."}
+        if isinstance(body, dict):
+            if isinstance(body.get("error"), dict):
+                err = body["error"]
+                code = err.get("code")
+                msg = err.get("message") or err.get("detail")
+                if code and msg:
+                    return f"{code}: {msg}"
+                if code:
+                    return str(code)
+                if msg:
+                    return str(msg)
+            # Fallbacks
+            if isinstance(body.get("message"), str):
+                return body["message"]
+            if isinstance(body.get("detail"), str):
+                return body["detail"]
+        # Fallback to text if available
+        text = getattr(resp, "text", None)
+        if isinstance(text, str) and text.strip():
+            return text.strip()
+        return "Unknown error"
