@@ -46,7 +46,7 @@ mypy .
 
 All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`).
 
-- Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings.
+- Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings. Use `--json` to print a JSON array of saved item summaries to stdout.
 
 ```
 python -m limitless_tools.cli.main fetch \
@@ -133,7 +133,7 @@ python -m limitless_tools.cli.main sync --start 2025-01-01 --end 2025-01-02 --js
 }
 ```
 
-- Sync by date or date range (writes `index.json` and updates incremental state):
+- Sync by date or date range (writes `index.json` and updates incremental state). Use `--json` to print a status object to stdout including `saved_count`, `lastCursor`, `lastEndTime`, and `items`.
 
 ```
 python -m limitless_tools.cli.main sync \
