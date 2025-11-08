@@ -44,14 +44,15 @@ mypy .
 
 ## CLI commands
 
-All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`).
+All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`).
 
 - Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings.
 
 ```
 python -m limitless_tools.cli.main fetch \
   --limit 10 \
-  --direction desc
+  --direction desc \
+  --batch-size 50
 
 # To disable markdown or headings explicitly:
 #   --no-include-markdown
@@ -65,7 +66,8 @@ python -m limitless_tools.cli.main fetch \
 
 ```
 python -m limitless_tools.cli.main sync \
-  --start 2025-01-01 --end 2025-01-31 --timezone America/Los_Angeles
+  --start 2025-01-01 --end 2025-01-31 --timezone America/Los_Angeles \
+  --batch-size 100
 
 # or a single day
 python -m limitless_tools.cli.main sync --date 2025-01-15
