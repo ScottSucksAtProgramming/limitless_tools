@@ -33,6 +33,7 @@ def _build_parser() -> argparse.ArgumentParser:
     fetch.set_defaults(include_headings=True)
     fetch.add_argument("--batch-size", type=int, default=50, help="Page size to use when fetching (default: 50)")
     fetch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+    fetch.add_argument("--json", action="store_true", default=False, help="Output JSON summary of saved items")
 
     sync = sub.add_parser("sync", help="Sync lifelogs for a date or range")
     sync.add_argument("--date", type=str)
@@ -46,6 +47,7 @@ def _build_parser() -> argparse.ArgumentParser:
     sync.add_argument("--starred-only", action="store_true", default=False)
     sync.add_argument("--batch-size", type=int, default=50, help="Page size to use when syncing (default: 50)")
     sync.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+    sync.add_argument("--json", action="store_true", default=False, help="Output JSON summary of results")
 
     lst = sub.add_parser("list", help="List local lifelogs")
     lst.add_argument("--date", type=str)
@@ -116,13 +118,30 @@ def main(argv: Optional[List[str]] = None) -> int:
             api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
-        service.fetch(
+        saved = service.fetch(
             limit=args.limit,
             direction=args.direction,
             include_markdown=args.include_markdown,
             include_headings=args.include_headings,
             batch_size=max(1, int(args.batch_size)),
         )
+        if args.json:
+            import json as _json
+            docs = []
+            for p in saved:
+                try:
+                    with open(p, "r", encoding="utf-8") as _f:
+                        obj = _json.loads(_f.read())
+                    docs.append({
+                        "id": obj.get("id"),
+                        "title": obj.get("title"),
+                        "startTime": obj.get("startTime"),
+                        "endTime": obj.get("endTime"),
+                        "path": p,
+                    })
+                except Exception:
+                    continue
+            print(_json.dumps(docs, ensure_ascii=False))
         return 0
 
     if args.command == "sync":
@@ -140,7 +159,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
-        service.sync(
+        saved = service.sync(
             date=args.date,
             start=args.start,
             end=args.end,
@@ -148,6 +167,37 @@ def main(argv: Optional[List[str]] = None) -> int:
             is_starred=True if args.starred_only else None,
             batch_size=max(1, int(args.batch_size)),
         )
+        if args.json:
+            import json as _json
+            from pathlib import Path as _Path
+            # Build items JSON and read state for lastCursor/lastEndTime
+            items = []
+            for p in saved:
+                try:
+                    with open(p, "r", encoding="utf-8") as _f:
+                        obj = _json.loads(_f.read())
+                    items.append({
+                        "id": obj.get("id"),
+                        "title": obj.get("title"),
+                        "startTime": obj.get("startTime"),
+                        "endTime": obj.get("endTime"),
+                        "path": p,
+                    })
+                except Exception:
+                    continue
+            # State resides at ../state/lifelogs_sync.json
+            try:
+                state_path = _Path(args.data_dir).parent / "state" / "lifelogs_sync.json"
+                state = _json.loads(state_path.read_text()) if state_path.exists() else {}
+            except Exception:
+                state = {}
+            result = {
+                "saved_count": len(saved),
+                "lastCursor": state.get("lastCursor"),
+                "lastEndTime": state.get("lastEndTime"),
+                "items": items,
+            }
+            print(_json.dumps(result, ensure_ascii=False))
         return 0
 
     if args.command == "list":
