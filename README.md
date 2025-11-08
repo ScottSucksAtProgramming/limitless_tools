@@ -45,3 +45,15 @@ python3 -m limitless_tools.cli.main fetch \
 - Uses pagination with sensible defaults. See docs/PRD.md for detailed requirements and roadmap.
 - TDD-first: tests are single-assert and documented for clarity.
 
+## Code quality
+
+- Ruff: a fast Python linter that aggregates many checks (pycodestyle/pyflakes/isort/pyupgrade) in one tool. It keeps the codebase consistent and catches common issues early.
+- mypy: static type checker for Python. It enforces type hints to reduce runtime errors and improve maintainability.
+
+Run locally:
+
+```
+ruff check .
+mypy .
+```
+

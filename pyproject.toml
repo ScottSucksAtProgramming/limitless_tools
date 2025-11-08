@@ -1,0 +1,20 @@
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = [
+  "E",   # pycodestyle errors
+  "F",   # pyflakes
+  "W",   # pycodestyle warnings
+  "I",   # isort
+  "UP",  # pyupgrade
+]
+ignore = [
+  "E501",  # line length handled via formatter/editor; we keep 100 as guide
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["limitless_tools"]
+combine-as-imports = true
+
