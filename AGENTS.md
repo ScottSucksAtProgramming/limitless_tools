@@ -1,7 +1,7 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-- `limitless_tools/cli/main.py` — CLI entrypoints (`fetch`, `sync`, `list`, `export-markdown`, `configure`, `fetch-audio` placeholder). Console script: `limitless`.
+- `limitless_tools/cli/main.py` — CLI entrypoints (`fetch`, `sync`, `list`, `search`, `export-markdown`, `export-csv`, `configure`, `fetch-audio` placeholder). Console script: `limitless`.
 - `limitless_tools/http/` — `LimitlessClient` for API calls, pagination, retries/Retry‑After, and error messages.
 - `limitless_tools/services/` — orchestration/business logic (`LifelogService`, `AudioService` placeholder).
 - `limitless_tools/storage/` — local JSON persistence (`json_repo`), index merge, and sync state (`state_repo`).
@@ -19,6 +19,7 @@
   - Fetch: `python -m limitless_tools.cli.main fetch --limit 5 [--json] [--batch-size 50]`
   - Sync: `python -m limitless_tools.cli.main sync --start 2025-01-01 --end 2025-01-31 --timezone UTC [--json]`
   - List: `python -m limitless_tools.cli.main list --date 2025-01-15 --json`
+  - Search: `python -m limitless_tools.cli.main search --query <text> [--date YYYY-MM-DD] [--starred-only] [--regex|-rg] [--fuzzy [--fuzzy-threshold 80]] [--json]`
   - Configure: `python -m limitless_tools.cli.main configure --api-key KEY --data-dir /path`
   - Pass `--profile work` or env `LIMITLESS_PROFILE=work` to select a config profile
 - Editable install + console script: `pip install -e .` then run `limitless ...`
@@ -51,3 +52,17 @@
 - Data directories are user‑configurable; default `~/limitless_tools/data/lifelogs`. Avoid committing local data.
 - Timezone validation for `sync`: must be a valid IANA name; invalid values exit with code 2.
 - Logging: use `--verbose` for JSON debug logs to stderr.
+
+## Notes on Sync State and Indexing
+- The sync command maintains incremental state in `~/limitless_tools/data/state/lifelogs_sync.json` (relative to your lifelogs dir).
+- State is per‑signature: different parameter sets (date/start/end/timezone/is_starred) keep separate `lastCursor`/`lastEndTime` entries.
+- An index file `index.json` is maintained in the lifelogs data dir; listing and search use it when available for speed.
+
+## Export Commands
+- `export-markdown`:
+  - Default prints concatenated markdown of the latest N entries (`--limit`) to stdout.
+  - Combined per‑date export: `--date YYYY-MM-DD --write-dir DIR --combine` writes `YYYY-MM-DD_lifelogs.md` to DIR.
+  - Optional `--frontmatter` adds YAML frontmatter per entry.
+- `export-csv`:
+  - Exports metadata columns `id,startTime,endTime,title,isStarred,updatedAt,path` with optional `--include-markdown` column.
+  - Prints to stdout by default; use `--output PATH` to write to file.

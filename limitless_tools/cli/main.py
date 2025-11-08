@@ -55,9 +55,29 @@ def _build_parser() -> argparse.ArgumentParser:
     lst.add_argument("--json", action="store_true", default=False, dest="as_json")
     lst.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
+    srch = sub.add_parser("search", help="Search local lifelogs")
+    srch.add_argument("--query", type=str, required=True)
+    srch.add_argument("--date", type=str)
+    srch.add_argument("--starred-only", action="store_true", default=False)
+    srch.add_argument("--regex", "-rg", action="store_true", default=False)
+    srch.add_argument("--fuzzy", action="store_true", default=False)
+    srch.add_argument("--fuzzy-threshold", type=int, default=80)
+    srch.add_argument("--json", action="store_true", default=False, dest="as_json")
+    srch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
     exp = sub.add_parser("export-markdown", help="Export markdown from local lifelogs")
     exp.add_argument("--limit", type=int, default=1)
+    exp.add_argument("--date", type=str, help="Export all lifelogs for this date (YYYY-MM-DD)")
+    exp.add_argument("--write-dir", type=str, help="Write markdown files into this directory")
+    exp.add_argument("--combine", action="store_true", default=False, help="Combine all matches into a single file (requires --date)")
+    exp.add_argument("--frontmatter", action="store_true", default=False, help="Include YAML frontmatter per entry")
     exp.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
+    csvp = sub.add_parser("export-csv", help="Export lifelogs metadata as CSV")
+    csvp.add_argument("--date", type=str)
+    csvp.add_argument("--include-markdown", action="store_true", default=False)
+    csvp.add_argument("--output", type=str)
+    csvp.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
     fa = sub.add_parser("fetch-audio", help="Download audio for a lifelog (placeholder)")
     fa.add_argument("--lifelog-id", required=True)
@@ -228,9 +248,58 @@ def main(argv: Optional[List[str]] = None) -> int:
             api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
+        # Combined per-date export to a single file
+        if args.combine:
+            if not args.date or not args.write_dir:
+                sys.stderr.write("--combine requires --date and --write-dir\n")
+                return 2
+            text = service.export_markdown_by_date(date=args.date, frontmatter=args.frontmatter)
+            from pathlib import Path as _Path
+            outdir = _Path(args.write_dir)
+            outdir.mkdir(parents=True, exist_ok=True)
+            outfile = outdir / f"{args.date}_lifelogs.md"
+            outfile.write_text(text)
+            return 0
+        # Legacy behavior: print N latest entries to stdout
         text = service.export_markdown(limit=args.limit)
         if text:
             print(text)
+        return 0
+
+    if args.command == "export-csv":
+        service = LifelogService(
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
+            data_dir=args.data_dir,
+        )
+        csv_text = service.export_csv(date=args.date, include_markdown=bool(getattr(args, "include_markdown", False)))
+        if getattr(args, "output", None):
+            from pathlib import Path as _Path
+            _Path(args.output).write_text(csv_text)
+        else:
+            print(csv_text)
+        return 0
+
+    if args.command == "search":
+        service = LifelogService(
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
+            data_dir=args.data_dir,
+        )
+        items = service.search_local(
+            query=args.query,
+            date=args.date,
+            is_starred=True if args.starred_only else None,
+            regex=bool(getattr(args, "regex", False)),
+            fuzzy=bool(getattr(args, "fuzzy", False)),
+            fuzzy_threshold=int(getattr(args, "fuzzy_threshold", 80)),
+        )
+        if args.as_json:
+            import json
+            print(json.dumps(items, ensure_ascii=False, indent=2))
+        else:
+            for it in items:
+                print(f"{it.get('startTime')} {it.get('id')} {it.get('title')}")
         return 0
 
     if args.command == "fetch-audio":

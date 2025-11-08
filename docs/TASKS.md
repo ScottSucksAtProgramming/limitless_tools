@@ -12,6 +12,11 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Editable install (`pip install -e .`) and console script `limitless`
 - Usage docs (docs/USAGE.md) and audio plan (docs/AUDIO.md)
 - TDD tests across client, services, storage, CLI
+- Local search over index (title/markdown) + `search` CLI
+- Search enhancements: `--regex`/`-rg`, `--fuzzy` with threshold
+- Per‑signature sync state (separate cursors/lastEndTime by parameter set)
+- CSV export (`export-csv`) with optional markdown column
+- Combined per‑date Markdown export (`export-markdown --date ... --write-dir ... --combine`)
 - Env integration in CLI: call `load_env()` at startup so `.env` is always honored
  - Structured logging and log levels (`--verbose`)
  - Improve error messages for non‑retryable 4xx/5xx
@@ -23,7 +28,6 @@ Status: living document; update as work progresses. Use TDD for every task.
  - Document/guard timezone behavior in CLI help; validate IANA names
 
 ## Backlog
-- Local search over index (by title/date/star/keywords)
 - Additional exporters (JSONL, CSV) and richer export filters
 - Pydantic as a strong runtime dependency once Python 3.11+ baseline is ensured (remove fallback shim)
 - Per‑signature state tracking (separate cursors/lastEndTime by parameter set)

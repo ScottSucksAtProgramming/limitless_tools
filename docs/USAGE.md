@@ -62,6 +62,24 @@ python -m limitless_tools.cli.main fetch \
 # limitless fetch --limit 10 --direction desc
 ```
 
+- Search local lifelogs by keyword (matches title and markdown). Supports regex and fuzzy search.
+
+```
+python -m limitless_tools.cli.main search \
+  --query meeting \
+  --date 2025-07-01 \
+  --starred-only \
+  --data-dir /path/to/lifelogs \
+  --json
+
+# Without --json, prints lines like:
+# 2025-07-01T00:00:00Z S1 Weekly Meeting Notes
+
+# Regex and fuzzy examples
+python -m limitless_tools.cli.main search --query "meet.*notes" -rg --data-dir /path
+python -m limitless_tools.cli.main search --query "Weekly Meeting" --fuzzy --fuzzy-threshold 80 --json
+```
+
 ### Configuration file (MVP)
 
 You can store defaults in a user config TOML and select profiles via `--profile`:
@@ -156,7 +174,29 @@ python -m limitless_tools.cli.main list --date 2025-01-15 --starred-only --json
 python -m limitless_tools.cli.main export-markdown --limit 5
 ```
 
+- Export combined markdown for a specific date to a single file (good for Obsidian):
+
+```
+python -m limitless_tools.cli.main export-markdown \
+  --date 2025-11-01 \
+  --data-dir /path/to/lifelogs \
+  --write-dir /path/to/obsidian/vault \
+  --combine
+```
+
+- Export CSV metadata (optionally include markdown):
+
+```
+python -m limitless_tools.cli.main export-csv \
+  --date 2025-12-01 \
+  --data-dir /path/to/lifelogs \
+  --include-markdown \
+  --output /tmp/lifelogs_2025-12-01.csv
+```
+
 ## Notes
 
 - The `sync` command maintains an incremental state file at `../state/lifelogs_sync.json` relative to your lifelogs data dir. On subsequent runs, if no `--start` is provided, it uses the last recorded end time as `start` to avoid re-fetching.
 - To include markdown/headings for fetch(), pass `--include-markdown` and `--include-headings` (the `sync` command includes both by default).
+- The `search` command reads a lightweight index when present to filter by date/starred quickly, and opens files as needed to match against markdown. Regex uses case-insensitive `re`, fuzzy uses `rapidfuzz` when available (falls back to `difflib`).
+- The `sync` command tracks resume info per‑signature of parameters (date/start/end/timezone/is_starred), preventing different sync modes from clobbering each other.

@@ -71,7 +71,21 @@ class LifelogService:
 
         # Load previous state and derive default start if none provided
         st = state_repo.load()
-        eff_start = start or st.get("lastEndTime")
+        # Compute a signature for the current sync parameters
+        import hashlib, json as _json
+        sig_dict = {
+            "date": date,
+            "start": start,
+            "end": end,
+            "timezone": timezone,
+            "is_starred": is_starred,
+            "direction": "desc",
+        }
+        sig_json = _json.dumps(sig_dict, sort_keys=True, ensure_ascii=False)
+        sig = hashlib.sha1(sig_json.encode("utf-8")).hexdigest()
+        signatures = st.get("signatures", {}) if isinstance(st.get("signatures"), dict) else {}
+        sig_state = signatures.get(sig, {})
+        eff_start = start or sig_state.get("lastEndTime") or st.get("lastEndTime")
 
         eff_tz = resolve_timezone(timezone)
         lifelogs = client.get_lifelogs(
@@ -85,7 +99,7 @@ class LifelogService:
             timezone=eff_tz,
             is_starred=is_starred,
             batch_size=batch_size,
-            cursor=st.get("lastCursor") if not any([date, start, end]) else None,
+            cursor=(sig_state.get("lastCursor") or st.get("lastCursor")) if not any([date, start, end]) else None,
         )
 
         saved_paths: list[str] = []
@@ -133,10 +147,15 @@ class LifelogService:
             except Exception:
                 last_end = None
             if last_end:
-                st["lastEndTime"] = last_end
+                st["lastEndTime"] = last_end  # top-level for compatibility
+                # per-signature
+                signatures.setdefault(sig, {})["lastEndTime"] = last_end
         # update lastCursor from client if available
         if getattr(client, "last_next_cursor", None):
-            st["lastCursor"] = client.last_next_cursor
+            st["lastCursor"] = client.last_next_cursor  # top-level for compatibility
+            signatures.setdefault(sig, {})["lastCursor"] = client.last_next_cursor
+        if signatures:
+            st["signatures"] = signatures
         state_repo.save(st)
 
         return saved_paths
@@ -213,3 +232,226 @@ class LifelogService:
                 parts.append(md)
 
         return "\n\n".join(parts)
+
+    def search_local(
+        self,
+        *,
+        query: str,
+        date: str | None = None,
+        is_starred: bool | None = None,
+        regex: bool = False,
+        fuzzy: bool = False,
+        fuzzy_threshold: int = 80,
+    ) -> list[dict[str, object]]:
+        """Search local lifelogs by case-insensitive substring in title or markdown.
+
+        Returns a list of summary dicts similar to list_local.
+        """
+        from pathlib import Path
+        import json, re
+
+        q = (query or "").strip()
+        if not q:
+            return []
+        ql = q.lower()
+        pattern = None
+        if regex:
+            try:
+                pattern = re.compile(q, flags=re.IGNORECASE)
+            except re.error:
+                pattern = None
+        # optional fuzzy scorer
+        rf_scorer = None
+        try:
+            from rapidfuzz import fuzz as _rf  # type: ignore
+
+            def _rf_score(a: str, b: str) -> int:
+                # partial_ratio is a good default for substring-like fuzziness
+                return int(_rf.partial_ratio(a, b))
+
+            rf_scorer = _rf_score
+        except Exception:
+            rf_scorer = None
+        import difflib as _difflib
+
+        base = Path(self.data_dir or "")
+        results: list[dict[str, object]] = []
+
+        # Prefer index for quick pass; we will open files as needed to check markdown
+        idx_items: list[dict[str, object]] = []
+        idx_path = base / "index.json"
+        if idx_path.exists():
+            try:
+                idx_items = json.loads(idx_path.read_text())
+            except Exception:
+                idx_items = []
+        else:
+            # Build items by scanning files
+            for p in base.rglob("lifelog_*.json"):
+                try:
+                    obj = json.loads(p.read_text())
+                except Exception:
+                    continue
+                idx_items.append(
+                    {
+                        "id": obj.get("id"),
+                        "title": obj.get("title"),
+                        "startTime": obj.get("startTime"),
+                        "endTime": obj.get("endTime"),
+                        "isStarred": obj.get("isStarred"),
+                        "updatedAt": obj.get("updatedAt"),
+                        "path": str(p),
+                    }
+                )
+
+        for it in idx_items:
+            st = str(it.get("startTime") or "")
+            if date and st[:10] != date:
+                continue
+            if is_starred is not None and bool(it.get("isStarred")) != is_starred:
+                continue
+
+            title = str(it.get("title") or "")
+            match = False
+            if regex and pattern is not None:
+                match = bool(pattern.search(title))
+            elif fuzzy:
+                # fuzzy against title first
+                if rf_scorer is not None:
+                    match = rf_scorer(ql, title.lower()) >= max(0, int(fuzzy_threshold))
+                else:
+                    ratio = _difflib.SequenceMatcher(None, ql, title.lower()).ratio() * 100.0
+                    match = ratio >= max(0, float(fuzzy_threshold))
+            else:
+                match = ql in title.lower()
+            if not match:
+                # try markdown by opening file
+                p = it.get("path")
+                try:
+                    if isinstance(p, str) and p:
+                        obj = json.loads(Path(p).read_text())
+                        md = obj.get("markdown")
+                        if isinstance(md, str) and md:
+                            if regex and pattern is not None:
+                                match = bool(pattern.search(md))
+                            elif fuzzy:
+                                if rf_scorer is not None:
+                                    match = rf_scorer(ql, md.lower()) >= max(0, int(fuzzy_threshold))
+                                else:
+                                    ratio = _difflib.SequenceMatcher(None, ql, md.lower()).ratio() * 100.0
+                                    match = ratio >= max(0, float(fuzzy_threshold))
+                            else:
+                                match = ql in md.lower()
+                except Exception:
+                    match = False
+            if match:
+                results.append(it)
+
+        return results
+
+    def export_markdown_by_date(self, *, date: str, frontmatter: bool = False) -> str:
+        """Return concatenated markdown for all lifelogs on a specific date."""
+        from pathlib import Path
+        import json
+
+        base = Path(self.data_dir or "")
+        entries: list[dict[str, object]] = []
+        for p in base.rglob("lifelog_*.json"):
+            try:
+                obj = json.loads(p.read_text())
+            except Exception:
+                continue
+            st = str(obj.get("startTime") or "")
+            if st[:10] != date:
+                continue
+            entries.append(obj)
+
+        # sort by startTime ascending
+        entries.sort(key=lambda x: str(x.get("startTime") or ""))
+
+        parts: list[str] = []
+        for e in entries:
+            md = e.get("markdown")
+            if isinstance(md, str) and md:
+                if frontmatter:
+                    fm_lines = [
+                        "---",
+                        f"id: {e.get('id')}",
+                        f"title: {e.get('title')}",
+                        f"startTime: {e.get('startTime')}",
+                        f"endTime: {e.get('endTime')}",
+                        f"isStarred: {e.get('isStarred')}",
+                        f"updatedAt: {e.get('updatedAt')}",
+                        "---",
+                    ]
+                    parts.append("\n".join(fm_lines) + "\n" + md)
+                else:
+                    parts.append(md)
+
+        return "\n\n".join(parts)
+
+    def export_csv(self, *, date: str | None = None, include_markdown: bool = False) -> str:
+        """Return CSV for lifelogs with optional markdown column."""
+        from pathlib import Path
+        import json, csv
+        from io import StringIO
+
+        base = Path(self.data_dir or "")
+        # Prefer index for listing paths
+        idx_items: list[dict[str, object]] = []
+        idx_path = base / "index.json"
+        if idx_path.exists():
+            try:
+                idx_items = json.loads(idx_path.read_text())
+            except Exception:
+                idx_items = []
+        else:
+            for p in base.rglob("lifelog_*.json"):
+                try:
+                    obj = json.loads(p.read_text())
+                except Exception:
+                    continue
+                idx_items.append(
+                    {
+                        "id": obj.get("id"),
+                        "title": obj.get("title"),
+                        "startTime": obj.get("startTime"),
+                        "endTime": obj.get("endTime"),
+                        "isStarred": obj.get("isStarred"),
+                        "updatedAt": obj.get("updatedAt"),
+                        "path": str(p),
+                    }
+                )
+
+        # Filter and sort
+        items: list[dict[str, object]] = []
+        for it in idx_items:
+            st = str(it.get("startTime") or "")
+            if date and st[:10] != date:
+                continue
+            items.append(it)
+        items.sort(key=lambda x: str(x.get("startTime") or ""))
+
+        # Build CSV
+        buf = StringIO()
+        fieldnames = ["id", "startTime", "endTime", "title", "isStarred", "updatedAt", "path"]
+        if include_markdown:
+            fieldnames.append("markdown")
+        writer = csv.DictWriter(buf, fieldnames=fieldnames)
+        writer.writeheader()
+        for it in items:
+            row = {k: it.get(k) for k in fieldnames if k != "markdown"}
+            if include_markdown:
+                md = ""
+                p = it.get("path")
+                try:
+                    if isinstance(p, str) and p:
+                        obj = json.loads(Path(p).read_text())
+                        mdt = obj.get("markdown")
+                        if isinstance(mdt, str):
+                            md = mdt
+                except Exception:
+                    md = ""
+                row["markdown"] = md
+            writer.writerow(row)
+        return buf.getvalue()
