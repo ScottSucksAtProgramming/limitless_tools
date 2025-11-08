@@ -8,6 +8,7 @@ from limitless_tools.services.lifelog_service import LifelogService
 from limitless_tools.config.paths import default_data_dir
 from limitless_tools.config.env import load_env
 from limitless_tools.config.logging import setup_logging
+from limitless_tools.config.config import load_config, get_profile, default_config_path
 import logging
 import sys
 from zoneinfo import ZoneInfo
@@ -16,6 +17,8 @@ from zoneinfo import ZoneInfo
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="limitless", description="Limitless Tools CLI")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
+    parser.add_argument("--config", type=str, help=f"Path to config TOML (default: {default_config_path()})")
+    parser.add_argument("--profile", type=str, default="default", help="Config profile/section to use (default)")
     sub = parser.add_subparsers(dest="command")
 
     fetch = sub.add_parser("fetch", help="Fetch lifelogs")
@@ -74,10 +77,39 @@ def main(argv: Optional[List[str]] = None) -> int:
         # Emit a debug message for tests/diagnostics (avoid reserved LogRecord keys)
         log.debug("parsed_args", extra={"cli_args": vars(args)})
 
+    # Load config and resolve profile
+    cfg = load_config(args.config)
+    prof = get_profile(cfg, args.profile)
+
+    # Precedence: CLI flags > environment variables > config > defaults
+    argv_list = argv or []
+
+    def _provided(opt: str) -> bool:
+        return opt in argv_list
+
+    # data_dir precedence
+    if not _provided("--data-dir") and not os.getenv("LIMITLESS_DATA_DIR"):
+        if isinstance(prof.get("data_dir"), str):
+            setattr(args, "data_dir", prof["data_dir"])  # type: ignore[index]
+
+    # batch_size precedence for fetch/sync
+    if not _provided("--batch-size") and isinstance(prof.get("batch_size"), (int, float)):
+        # argparse stores parsed ints; coerce to int
+        setattr(args, "batch_size", int(prof["batch_size"]))  # type: ignore[index]
+
+    # timezone precedence for sync
+    if getattr(args, "command", None) == "sync" and not _provided("--timezone") and not os.getenv("LIMITLESS_TZ"):
+        if isinstance(prof.get("timezone"), str):
+            setattr(args, "timezone", prof["timezone"])  # type: ignore[index]
+
+    # Resolve API credentials
+    resolved_api_key = os.getenv("LIMITLESS_API_KEY") or (prof.get("api_key") if isinstance(prof.get("api_key"), str) else None)
+    resolved_api_url = os.getenv("LIMITLESS_API_URL") or (prof.get("api_url") if isinstance(prof.get("api_url"), str) else None)
+
     if args.command == "fetch":
         service = LifelogService(
-            api_key=os.getenv("LIMITLESS_API_KEY"),
-            api_url=os.getenv("LIMITLESS_API_URL"),
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
         service.fetch(
@@ -100,8 +132,8 @@ def main(argv: Optional[List[str]] = None) -> int:
                 )
                 return 2
         service = LifelogService(
-            api_key=os.getenv("LIMITLESS_API_KEY"),
-            api_url=os.getenv("LIMITLESS_API_URL"),
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
         service.sync(
@@ -116,8 +148,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "list":
         service = LifelogService(
-            api_key=os.getenv("LIMITLESS_API_KEY"),
-            api_url=os.getenv("LIMITLESS_API_URL"),
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
         items = service.list_local(date=args.date, is_starred=True if args.starred_only else None)
@@ -131,8 +163,8 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     if args.command == "export-markdown":
         service = LifelogService(
-            api_key=os.getenv("LIMITLESS_API_KEY"),
-            api_url=os.getenv("LIMITLESS_API_URL"),
+            api_key=resolved_api_key,
+            api_url=resolved_api_url,
             data_dir=args.data_dir,
         )
         text = service.export_markdown(limit=args.limit)
