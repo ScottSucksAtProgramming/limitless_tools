@@ -37,6 +37,10 @@ def _build_parser() -> argparse.ArgumentParser:
     exp.add_argument("--limit", type=int, default=1)
     exp.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
+    fa = sub.add_parser("fetch-audio", help="Download audio for a lifelog (placeholder)")
+    fa.add_argument("--lifelog-id", required=True)
+    fa.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
     return parser
 
 
@@ -98,6 +102,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         if text:
             print(text)
         return 0
+
+    if args.command == "fetch-audio":
+        print("Audio endpoints are not yet documented; see docs/AUDIO.md")
+        return 2
 
     parser.print_help()
     return 2
