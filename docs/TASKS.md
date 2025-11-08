@@ -15,6 +15,7 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Env integration in CLI: call `load_env()` at startup so `.env` is always honored
  - Structured logging and log levels (`--verbose`)
  - Improve error messages for non‑retryable 4xx/5xx
+ - Document/guard timezone behavior in CLI help; validate IANA names
 
 ## In Progress / Next Up
 - Document/guard timezone behavior in CLI help; validate IANA names
