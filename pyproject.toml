@@ -30,8 +30,10 @@ requires-python = ">=3.11"
 authors = [{ name = "Your Name" }]
 dependencies = [
   "requests>=2.31,<3",
+  "pydantic>=2.6,<3",
+  "python-dotenv>=1,<2",
+  "tzlocal>=5,<6",
 ]
 
 [project.scripts]
 limitless = "limitless_tools.cli.main:main"
-

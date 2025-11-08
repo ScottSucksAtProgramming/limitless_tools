@@ -51,6 +51,7 @@ class LimitlessClient:
         timezone: Optional[str] = None,
         is_starred: Optional[bool] = None,
         batch_size: int = 10,
+        cursor: Optional[str] = None,
     ) -> List[Dict[str, Any]]:
         """
         Fetch lifelogs with automatic pagination. Returns a list of lifelog dicts.
@@ -62,7 +63,9 @@ class LimitlessClient:
             page_size = batch_size
 
         collected: List[Dict[str, Any]] = []
-        cursor: Optional[str] = None
+        # seed initial cursor if provided
+        current_cursor: Optional[str] = cursor
+        self.last_next_cursor: Optional[str] = None
 
         while True:
             params: Dict[str, Any] = {
@@ -81,8 +84,8 @@ class LimitlessClient:
                 params["timezone"] = timezone
             if is_starred is not None:
                 params["isStarred"] = "true" if is_starred else "false"
-            if cursor:
-                params["cursor"] = cursor
+            if current_cursor:
+                params["cursor"] = current_cursor
 
             url = f"{self.base_url}/v1/lifelogs"
             # perform request with retry loop
@@ -94,7 +97,13 @@ class LimitlessClient:
                 status = getattr(resp, "status_code", None)
                 if status in self.retry_statuses and attempt < self.max_retries:
                     attempt += 1
-                    delay = self.backoff_factor * (2 ** (attempt - 1))
+                    # Use Retry-After header if provided; otherwise exponential backoff
+                    headers = getattr(resp, "headers", {}) or {}
+                    ra = headers.get("Retry-After") if isinstance(headers, dict) else None
+                    try:
+                        delay = float(ra) if ra is not None else self.backoff_factor * (2 ** (attempt - 1))
+                    except Exception:
+                        delay = self.backoff_factor * (2 ** (attempt - 1))
                     self.sleep_fn(delay)
                     continue
                 raise RuntimeError(f"HTTP error fetching lifelogs (status {status})")
@@ -106,8 +115,10 @@ class LimitlessClient:
             if limit is not None and len(collected) >= limit:
                 return collected[:limit]
 
-            cursor = body.get("meta", {}).get("lifelogs", {}).get("nextCursor")
-            if not cursor:
+            current_cursor = body.get("meta", {}).get("lifelogs", {}).get("nextCursor")
+            if current_cursor:
+                self.last_next_cursor = current_cursor
+            if not current_cursor:
                 break
 
         return collected

@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional
 from limitless_tools.http.client import LimitlessClient
 from limitless_tools.storage.json_repo import JsonFileRepository
 from limitless_tools.storage.state_repo import StateRepository
+from limitless_tools.config.env import resolve_timezone
 
 
 @dataclass
@@ -72,6 +73,7 @@ class LifelogService:
         st = state_repo.load()
         eff_start = start or st.get("lastEndTime")
 
+        eff_tz = resolve_timezone(timezone)
         lifelogs = client.get_lifelogs(
             limit=None,
             direction="desc",
@@ -80,9 +82,10 @@ class LifelogService:
             date=date,
             start=eff_start,
             end=end,
-            timezone=timezone,
+            timezone=eff_tz,
             is_starred=is_starred,
             batch_size=batch_size,
+            cursor=st.get("lastCursor") if not any([date, start, end]) else None,
         )
 
         saved_paths: list[str] = []
@@ -108,7 +111,20 @@ class LifelogService:
 
         base = Path(self.data_dir or "")
         base.mkdir(parents=True, exist_ok=True)
-        (base / "index.json").write_text(json.dumps(index_rows, ensure_ascii=False, indent=2))
+        # merge/update index if exists
+        idx_path = base / "index.json"
+        existing: list[dict] = []
+        if idx_path.exists():
+            try:
+                existing = json.loads(idx_path.read_text())
+            except Exception:
+                existing = []
+        merged: dict[str, dict] = {str(it.get("id")): it for it in existing}
+        for row in index_rows:
+            merged[str(row.get("id"))] = row
+        # sort by startTime ascending for stability
+        merged_list = sorted(merged.values(), key=lambda x: str(x.get("startTime") or ""))
+        idx_path.write_text(json.dumps(merged_list, ensure_ascii=False, indent=2))
 
         # update state with latest end time observed
         if lifelogs:
@@ -118,7 +134,10 @@ class LifelogService:
                 last_end = None
             if last_end:
                 st["lastEndTime"] = last_end
-                state_repo.save(st)
+        # update lastCursor from client if available
+        if getattr(client, "last_next_cursor", None):
+            st["lastCursor"] = client.last_next_cursor
+        state_repo.save(st)
 
         return saved_paths
 

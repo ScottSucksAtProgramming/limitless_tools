@@ -1,4 +1,7 @@
 pytest>=8,<9
 requests>=2.31,<3
+python-dotenv>=1,<2
+tzlocal>=5,<6
+pydantic>=2.6,<3
 ruff>=0.6
 mypy>=1.10
