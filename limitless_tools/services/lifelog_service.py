@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from limitless_tools.http.client import LimitlessClient
 from limitless_tools.storage.json_repo import JsonFileRepository
+from limitless_tools.storage.state_repo import StateRepository
 
 
 @dataclass
@@ -65,6 +66,11 @@ class LifelogService:
     ) -> list[str]:
         client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
         repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")
+        state_repo = StateRepository(base_lifelogs_dir=self.data_dir or "")
+
+        # Load previous state and derive default start if none provided
+        st = state_repo.load()
+        eff_start = start or st.get("lastEndTime")
 
         lifelogs = client.get_lifelogs(
             limit=None,
@@ -72,7 +78,7 @@ class LifelogService:
             include_markdown=True,
             include_headings=True,
             date=date,
-            start=start,
+            start=eff_start,
             end=end,
             timezone=timezone,
             is_starred=is_starred,
@@ -103,6 +109,17 @@ class LifelogService:
         base = Path(self.data_dir or "")
         base.mkdir(parents=True, exist_ok=True)
         (base / "index.json").write_text(json.dumps(index_rows, ensure_ascii=False, indent=2))
+
+        # update state with latest end time observed
+        if lifelogs:
+            try:
+                last_end = max([str(x.get("endTime") or "") for x in lifelogs])
+            except Exception:
+                last_end = None
+            if last_end:
+                st["lastEndTime"] = last_end
+                state_repo.save(st)
+
         return saved_paths
 
     def list_local(
