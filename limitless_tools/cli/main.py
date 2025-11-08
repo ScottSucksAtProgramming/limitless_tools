@@ -19,6 +19,14 @@ def _build_parser() -> argparse.ArgumentParser:
     fetch.add_argument("--include-headings", action="store_true", default=False)
     fetch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
+    sync = sub.add_parser("sync", help="Sync lifelogs for a date or range")
+    sync.add_argument("--date", type=str)
+    sync.add_argument("--start", type=str)
+    sync.add_argument("--end", type=str)
+    sync.add_argument("--timezone", type=str)
+    sync.add_argument("--starred-only", action="store_true", default=False)
+    sync.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
     return parser
 
 
@@ -37,6 +45,21 @@ def main(argv: Optional[List[str]] = None) -> int:
             direction=args.direction,
             include_markdown=args.include_markdown,
             include_headings=args.include_headings,
+        )
+        return 0
+
+    if args.command == "sync":
+        service = LifelogService(
+            api_key=os.getenv("LIMITLESS_API_KEY"),
+            api_url=os.getenv("LIMITLESS_API_URL"),
+            data_dir=args.data_dir,
+        )
+        service.sync(
+            date=args.date,
+            start=args.start,
+            end=args.end,
+            timezone=args.timezone,
+            is_starred=True if args.starred_only else None,
         )
         return 0
 

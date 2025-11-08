@@ -52,3 +52,55 @@ class LifelogService:
             saved_paths.append(repo.save_lifelog(item))
 
         return saved_paths
+
+    def sync(
+        self,
+        *,
+        date: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
+        timezone: str | None = None,
+        is_starred: bool | None = None,
+        batch_size: int = 10,
+    ) -> list[str]:
+        client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
+        repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")
+
+        lifelogs = client.get_lifelogs(
+            limit=None,
+            direction="desc",
+            include_markdown=True,
+            include_headings=True,
+            date=date,
+            start=start,
+            end=end,
+            timezone=timezone,
+            is_starred=is_starred,
+            batch_size=batch_size,
+        )
+
+        saved_paths: list[str] = []
+        index_rows: list[dict[str, str | bool | None]] = []
+        for ll in lifelogs:
+            p = repo.save_lifelog(ll)
+            saved_paths.append(p)
+            index_rows.append(
+                {
+                    "id": ll.get("id"),
+                    "title": ll.get("title"),
+                    "startTime": ll.get("startTime"),
+                    "endTime": ll.get("endTime"),
+                    "isStarred": ll.get("isStarred"),
+                    "updatedAt": ll.get("updatedAt"),
+                    "path": p,
+                }
+            )
+
+        # write index.json at base dir
+        from pathlib import Path
+        import json
+
+        base = Path(self.data_dir or "")
+        base.mkdir(parents=True, exist_ok=True)
+        (base / "index.json").write_text(json.dumps(index_rows, ensure_ascii=False, indent=2))
+        return saved_paths
