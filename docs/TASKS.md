@@ -13,10 +13,10 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Usage docs (docs/USAGE.md) and audio plan (docs/AUDIO.md)
 - TDD tests across client, services, storage, CLI
 - Env integration in CLI: call `load_env()` at startup so `.env` is always honored
+ - Structured logging and log levels (`--verbose`)
+ - Improve error messages for non‑retryable 4xx/5xx
 
 ## In Progress / Next Up
-- Structured logging and log levels (`--verbose`)
-- Improve error messages for non‑retryable 4xx/5xx
 - Document/guard timezone behavior in CLI help; validate IANA names
 - Performance: tune batch size defaults; add `--batch-size`
 - User-scoped config file (TOML via platformdirs) with precedence: CLI flags > env > config; support `--config`/`--profile` (MVP)
