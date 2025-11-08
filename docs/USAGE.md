@@ -97,6 +97,7 @@ api_key = "YOUR_API_KEY"
 data_dir = "/path/to/lifelogs"
 timezone = "UTC"
 batch_size = 50
+output_dir = "/path/to/exports"  # default directory for file outputs (e.g., export-markdown --combine, export-csv)
 
 [work]
 api_key = "WORK_API_KEY"

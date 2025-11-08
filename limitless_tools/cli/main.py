@@ -89,6 +89,7 @@ def _build_parser() -> argparse.ArgumentParser:
     cfgp.add_argument("--data-dir", type=str)
     cfgp.add_argument("--timezone", type=str)
     cfgp.add_argument("--batch-size", type=int)
+    cfgp.add_argument("--output-dir", type=str)
 
     return parser
 
@@ -250,12 +251,15 @@ def main(argv: Optional[List[str]] = None) -> int:
         )
         # Combined per-date export to a single file
         if args.combine:
-            if not args.date or not args.write_dir:
-                sys.stderr.write("--combine requires --date and --write-dir\n")
+            # Determine effective output directory: CLI --write-dir > config profile output_dir
+            cfg_output_dir = prof.get("output_dir") if isinstance(prof.get("output_dir"), str) else None
+            eff_write_dir = args.write_dir or cfg_output_dir
+            if not args.date or not eff_write_dir:
+                sys.stderr.write("--combine requires --date and a write directory (provide --write-dir or set output_dir in config)\n")
                 return 2
             text = service.export_markdown_by_date(date=args.date, frontmatter=args.frontmatter)
             from pathlib import Path as _Path
-            outdir = _Path(args.write_dir)
+            outdir = _Path(eff_write_dir)
             outdir.mkdir(parents=True, exist_ok=True)
             outfile = outdir / f"{args.date}_lifelogs.md"
             outfile.write_text(text)
@@ -273,9 +277,18 @@ def main(argv: Optional[List[str]] = None) -> int:
             data_dir=args.data_dir,
         )
         csv_text = service.export_csv(date=args.date, include_markdown=bool(getattr(args, "include_markdown", False)))
-        if getattr(args, "output", None):
+        # Determine effective output file: CLI --output > config profile output_dir + default filename; else stdout
+        cfg_output_dir = prof.get("output_dir") if isinstance(prof.get("output_dir"), str) else None
+        eff_output = getattr(args, "output", None)
+        if not eff_output and cfg_output_dir:
+            import os as _os
+            base = f"lifelogs_{args.date}.csv" if getattr(args, "date", None) else "lifelogs.csv"
+            eff_output = _os.path.join(cfg_output_dir, base)
+        if eff_output:
             from pathlib import Path as _Path
-            _Path(args.output).write_text(csv_text)
+            p = _Path(eff_output)
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(csv_text)
         else:
             print(csv_text)
         return 0
@@ -316,7 +329,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         prof_dict = current.get(target_profile, {}) if current else {}
         # Apply updates from flags (ignore None values)
         updates = {}
-        for k in ["api_key", "api_url", "data_dir", "timezone", "batch_size"]:
+        for k in ["api_key", "api_url", "data_dir", "timezone", "batch_size", "output_dir"]:
             v = getattr(args, k, None)
             if v is not None:
                 updates[k] = v

@@ -53,6 +53,10 @@
 - Timezone validation for `sync`: must be a valid IANA name; invalid values exit with code 2.
 - Logging: use `--verbose` for JSON debug logs to stderr.
 
+### Config keys
+- `api_key`, `api_url`, `data_dir`, `timezone`, `batch_size`, `output_dir`.
+- `output_dir` is used as the default destination for commands that write files when a CLI path is not provided (e.g., `export-markdown --combine` uses it as `--write-dir`, `export-csv` writes `lifelogs_YYYY-MM-DD.csv` into it when `--output` is omitted).
+
 ## Notes on Sync State and Indexing
 - The sync command maintains incremental state in `~/limitless_tools/data/state/lifelogs_sync.json` (relative to your lifelogs dir).
 - State is per‑signature: different parameter sets (date/start/end/timezone/is_starred) keep separate `lastCursor`/`lastEndTime` entries.
