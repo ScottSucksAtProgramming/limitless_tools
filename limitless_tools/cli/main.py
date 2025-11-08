@@ -1,0 +1,48 @@
+from __future__ import annotations
+
+import argparse
+import os
+from typing import List, Optional
+
+from limitless_tools.services.lifelog_service import LifelogService
+from limitless_tools.config.paths import default_data_dir
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="limitless", description="Limitless Tools CLI")
+    sub = parser.add_subparsers(dest="command")
+
+    fetch = sub.add_parser("fetch", help="Fetch lifelogs")
+    fetch.add_argument("--limit", type=int, default=10)
+    fetch.add_argument("--direction", type=str, default="desc", choices=["asc", "desc"])
+    fetch.add_argument("--include-markdown", action="store_true", default=False)
+    fetch.add_argument("--include-headings", action="store_true", default=False)
+    fetch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
+
+    return parser
+
+
+def main(argv: Optional[List[str]] = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(args=argv)
+
+    if args.command == "fetch":
+        service = LifelogService(
+            api_key=os.getenv("LIMITLESS_API_KEY"),
+            api_url=os.getenv("LIMITLESS_API_URL"),
+            data_dir=args.data_dir,
+        )
+        service.fetch(
+            limit=args.limit,
+            direction=args.direction,
+            include_markdown=args.include_markdown,
+            include_headings=args.include_headings,
+        )
+        return 0
+
+    parser.print_help()
+    return 2
+
+
+if __name__ == "__main__":  # pragma: no cover
+    raise SystemExit(main())
