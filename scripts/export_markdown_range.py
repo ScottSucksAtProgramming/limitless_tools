@@ -20,6 +20,26 @@ def _iter_dates(start_date: str, end_date: str):
         d += timedelta(days=1)
 
 
+def _resolve_lifelogs_dir(path: Optional[str]) -> str:
+    """Return a directory that contains lifelog_*.json files.
+
+    Accept either the lifelogs directory itself (~/.../data/lifelogs) or its parent (~/.../data).
+    If a 'lifelogs' subdirectory exists under the provided path, prefer it.
+    """
+    if not path:
+        return default_data_dir()
+    p = Path(path).expanduser()
+    # If they passed the lifelogs dir already, use it
+    if p.name == "lifelogs":
+        return str(p)
+    # If a lifelogs subdir exists, use it
+    lifelogs_sub = p / "lifelogs"
+    if lifelogs_sub.exists() and lifelogs_sub.is_dir():
+        return str(lifelogs_sub)
+    # Otherwise, use provided path (rglob will still find nested matches)
+    return str(p)
+
+
 def export_range(
     *,
     start: str,
@@ -29,7 +49,8 @@ def export_range(
     frontmatter: bool = False,
     skip_empty: bool = True,
 ) -> int:
-    service = LifelogService(api_key=None, api_url=None, data_dir=data_dir or default_data_dir())
+    lifelogs_dir = _resolve_lifelogs_dir(data_dir)
+    service = LifelogService(api_key=None, api_url=None, data_dir=lifelogs_dir)
     out_path = Path(out_dir)
     out_path.mkdir(parents=True, exist_ok=True)
 
@@ -67,4 +88,3 @@ def main(argv: Optional[list[str]] = None) -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

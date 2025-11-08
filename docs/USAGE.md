@@ -196,7 +196,7 @@ python -m limitless_tools.cli.main export-csv \
 
 ## Bulk export script
 
-For exporting many days at once (e.g., to an Obsidian vault), use the helper script:
+For exporting many days at once (e.g., to an Obsidian vault), use the helper script. You can point `--data-dir` to either the lifelogs directory (`~/limitless_tools/data/lifelogs`) or its parent (`~/limitless_tools/data`) — the script auto-detects `lifelogs/`.
 
 ```
 python scripts/export_markdown_range.py \
