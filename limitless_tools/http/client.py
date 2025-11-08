@@ -16,10 +16,24 @@ class LimitlessClient:
         api_key: str,
         base_url: str | None = None,
         session: Optional[Any] = None,
+        *,
+        max_retries: int = 0,
+        backoff_factor: float = 0.5,
+        retry_statuses: tuple[int, ...] = (429, 502, 503, 504),
+        sleep_fn: Optional[Any] = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = (base_url or os.getenv("LIMITLESS_API_URL") or "https://api.limitless.ai").rstrip("/")
         self.session = session or (requests.Session() if requests is not None else None)
+        self.max_retries = max_retries
+        self.backoff_factor = backoff_factor
+        self.retry_statuses = retry_statuses
+        # default sleep uses time.sleep, but lazily import to avoid overhead in tests
+        if sleep_fn is None:
+            import time as _time
+            self.sleep_fn = _time.sleep
+        else:
+            self.sleep_fn = sleep_fn
 
     def _headers(self) -> Dict[str, str]:
         return {"X-API-Key": self.api_key}
@@ -71,9 +85,18 @@ class LimitlessClient:
                 params["cursor"] = cursor
 
             url = f"{self.base_url}/v1/lifelogs"
-            resp = self.session.get(url, headers=self._headers(), params=params)  # type: ignore[union-attr]
-            if not getattr(resp, "ok", False):
-                status = getattr(resp, "status_code", "?")
+            # perform request with retry loop
+            attempt = 0
+            while True:
+                resp = self.session.get(url, headers=self._headers(), params=params)  # type: ignore[union-attr]
+                if getattr(resp, "ok", False):
+                    break
+                status = getattr(resp, "status_code", None)
+                if status in self.retry_statuses and attempt < self.max_retries:
+                    attempt += 1
+                    delay = self.backoff_factor * (2 ** (attempt - 1))
+                    self.sleep_fn(delay)
+                    continue
                 raise RuntimeError(f"HTTP error fetching lifelogs (status {status})")
 
             body = resp.json()
