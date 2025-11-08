@@ -18,6 +18,17 @@ pip install -r requirements-dev.txt
 
 Optional: copy `.env.example` to `.env` and fill in variables, or export environment variables in your shell.
 
+## Editable install (optional)
+
+Install the package locally to get a `limitless` CLI command:
+
+```
+pip install -e .
+
+# Now you can run the CLI as a command
+limitless fetch --limit 5
+```
+
 ## Running tests
 
 ```
@@ -35,14 +46,19 @@ mypy .
 
 All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`).
 
-- Fetch latest N lifelogs (saves JSON files):
+- Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings.
 
 ```
 python -m limitless_tools.cli.main fetch \
   --limit 10 \
-  --direction desc \
-  --include-markdown \
-  --include-headings
+  --direction desc
+
+# To disable markdown or headings explicitly:
+#   --no-include-markdown
+#   --no-include-headings
+
+# If you installed with `pip install -e .`, you can also run:
+# limitless fetch --limit 10 --direction desc
 ```
 
 - Sync by date or date range (writes `index.json` and updates incremental state):
@@ -71,4 +87,3 @@ python -m limitless_tools.cli.main export-markdown --limit 5
 
 - The `sync` command maintains an incremental state file at `../state/lifelogs_sync.json` relative to your lifelogs data dir. On subsequent runs, if no `--start` is provided, it uses the last recorded end time as `start` to avoid re-fetching.
 - To include markdown/headings for fetch(), pass `--include-markdown` and `--include-headings` (the `sync` command includes both by default).
-

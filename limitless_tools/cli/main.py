@@ -15,8 +15,13 @@ def _build_parser() -> argparse.ArgumentParser:
     fetch = sub.add_parser("fetch", help="Fetch lifelogs")
     fetch.add_argument("--limit", type=int, default=10)
     fetch.add_argument("--direction", type=str, default="desc", choices=["asc", "desc"])
-    fetch.add_argument("--include-markdown", action="store_true", default=False)
-    fetch.add_argument("--include-headings", action="store_true", default=False)
+    # Defaults: include markdown/headings by default; allow disabling via --no-*
+    fetch.add_argument("--include-markdown", dest="include_markdown", action="store_true")
+    fetch.add_argument("--no-include-markdown", dest="include_markdown", action="store_false")
+    fetch.set_defaults(include_markdown=True)
+    fetch.add_argument("--include-headings", dest="include_headings", action="store_true")
+    fetch.add_argument("--no-include-headings", dest="include_headings", action="store_false")
+    fetch.set_defaults(include_headings=True)
     fetch.add_argument("--data-dir", type=str, default=os.getenv("LIMITLESS_DATA_DIR") or default_data_dir())
 
     sync = sub.add_parser("sync", help="Sync lifelogs for a date or range")

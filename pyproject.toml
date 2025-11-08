@@ -17,4 +17,21 @@ ignore = [
 [tool.ruff.lint.isort]
 known-first-party = ["limitless_tools"]
 combine-as-imports = true
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "limitless-tools"
+version = "0.1.0"
+description = "Library and CLI to fetch Limitless lifelogs and store locally"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [{ name = "Your Name" }]
+dependencies = [
+  "requests>=2.31,<3",
+]
+
+[project.scripts]
+limitless = "limitless_tools.cli.main:main"
 
