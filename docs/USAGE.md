@@ -89,7 +89,7 @@ You can store defaults in a user config TOML and select profiles via `--profile`
 - Select a profile with `--profile` or `LIMITLESS_PROFILE` env var (default: `default`).
 - Precedence: CLI flags > environment variables > config file > built-in defaults.
 
-Example `config.toml`:
+Example `config.toml` (see `config.toml.example` in the repo):
 
 ```
 [default]

@@ -1,0 +1,35 @@
+# Example configuration for limitless_tools.
+# Copy this file to your user config path or pass as --config.
+# Default user config path: ~/limitless_tools/config/config.toml
+
+[default]
+# Your API key for Limitless (or set LIMITLESS_API_KEY in env/.env)
+api_key = "YOUR_API_KEY"
+
+# Optional API URL override (default: https://api.limitless.ai)
+# api_url = "https://api.limitless.ai"
+
+# Root directory where lifelog JSON files are stored
+data_dir = "~/limitless_tools/data/lifelogs"
+
+# Default timezone (IANA name). Used by `sync` if not provided via flag/env
+timezone = "UTC"
+
+# Default page size for API fetches
+batch_size = 50
+
+# Default output directory for commands that write files when a CLI path
+# is not provided. Used by:
+# - export-markdown --combine (if --write-dir omitted)
+# - export-csv (if --output omitted)
+output_dir = "~/limitless_tools/exports"
+
+
+[work]
+# Example alternate profile
+api_key = "WORK_API_KEY"
+data_dir = "~/work/data/lifelogs"
+timezone = "America/Los_Angeles"
+batch_size = 100
+output_dir = "~/work/exports"
+
