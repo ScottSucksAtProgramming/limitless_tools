@@ -18,7 +18,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="limitless", description="Limitless Tools CLI")
     parser.add_argument("-v", "--verbose", action="store_true", help="Enable debug logging")
     parser.add_argument("--config", type=str, help=f"Path to config TOML (default: {default_config_path()})")
-    parser.add_argument("--profile", type=str, default="default", help="Config profile/section to use (default)")
+    parser.add_argument("--profile", type=str, default=None, help="Config profile/section to use (default)")
     sub = parser.add_subparsers(dest="command")
 
     fetch = sub.add_parser("fetch", help="Fetch lifelogs")
@@ -78,8 +78,12 @@ def main(argv: Optional[List[str]] = None) -> int:
         log.debug("parsed_args", extra={"cli_args": vars(args)})
 
     # Load config and resolve profile
-    cfg = load_config(args.config)
-    prof = get_profile(cfg, args.profile)
+    # Allow env var overrides for config path and profile
+    config_path = args.config or os.getenv("LIMITLESS_CONFIG")
+    profile_name = args.profile or os.getenv("LIMITLESS_PROFILE") or "default"
+
+    cfg = load_config(config_path)
+    prof = get_profile(cfg, profile_name)
 
     # Precedence: CLI flags > environment variables > config > defaults
     argv_list = argv or []

@@ -70,7 +70,8 @@ You can store defaults in a user config TOML and select profiles via `--profile`
   - macOS: `~/Library/Application Support/limitless-tools/config.toml`
   - Linux: `~/.config/limitless-tools/config.toml`
   - Windows: `%APPDATA%/limitless-tools/config.toml`
-- Override path with `--config`.
+- Override path with `--config` or `LIMITLESS_CONFIG` env var.
+- Select a profile with `--profile` or `LIMITLESS_PROFILE` env var (default: `default`).
 - Precedence: CLI flags > environment variables > config file > built-in defaults.
 
 Example `config.toml`:
