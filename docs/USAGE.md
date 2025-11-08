@@ -66,10 +66,7 @@ python -m limitless_tools.cli.main fetch \
 
 You can store defaults in a user config TOML and select profiles via `--profile`:
 
-- Default path (varies by OS):
-  - macOS: `~/Library/Application Support/limitless-tools/config.toml`
-  - Linux: `~/.config/limitless-tools/config.toml`
-  - Windows: `%APPDATA%/limitless-tools/config.toml`
+- Default path: `~/limitless_tools/config/config.toml`
 - Override path with `--config` or `LIMITLESS_CONFIG` env var.
 - Select a profile with `--profile` or `LIMITLESS_PROFILE` env var (default: `default`).
 - Precedence: CLI flags > environment variables > config file > built-in defaults.

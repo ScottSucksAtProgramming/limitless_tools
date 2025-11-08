@@ -6,28 +6,13 @@ from typing import Any, Dict, Optional
 
 
 def default_config_path() -> str:
-    """Return default user config path (platform-specific).
+    """Return default user config path within ~/limitless_tools/.
 
-    Fallback if `platformdirs` is unavailable:
-      - macOS: ~/Library/Application Support/limitless-tools/config.toml
-      - Linux/Unix: ~/.config/limitless-tools/config.toml
-      - Windows: %APPDATA%/limitless-tools/config.toml
+    New default: ~/limitless_tools/config/config.toml
     """
-    try:
-        from platformdirs import PlatformDirs  # type: ignore
-
-        d = PlatformDirs("limitless-tools", "")
-        cfg_dir = d.user_config_dir
-        return os.path.join(cfg_dir, "config.toml")
-    except Exception:
-        home = os.path.expanduser("~")
-        if sys.platform.startswith("darwin"):
-            base = os.path.join(home, "Library", "Application Support", "limitless-tools")
-        elif os.name == "nt":
-            base = os.path.join(os.environ.get("APPDATA", os.path.join(home, "AppData", "Roaming")), "limitless-tools")
-        else:
-            base = os.path.join(home, ".config", "limitless-tools")
-        return os.path.join(base, "config.toml")
+    home = os.path.expanduser("~")
+    base = os.path.join(home, "limitless_tools", "config")
+    return os.path.join(base, "config.toml")
 
 
 def _parse_toml_minimal(text: str) -> Dict[str, Dict[str, Any]]:
@@ -102,4 +87,3 @@ def get_profile(config: Dict[str, Dict[str, Any]], profile: Optional[str]) -> Di
         return config.get(profile, {}) or {}
     # If TOML parser returns top-level keys under other shape, fallback
     return config.get("default", {}) or {}
-
