@@ -199,6 +199,8 @@ Performance
 
 Security
 - API key via env/.env; never logged; `.env` ignored by git; `.env.example` committed.
+ - Egress control: HTTP base URL host is allowlisted (default: `api.limitless.ai`, `localhost`, `127.0.0.1`); extend with `LIMITLESS_URL_ALLOWLIST` or bypass with `LIMITLESS_ALLOW_UNSAFE_URLS=1`.
+ - Logging redaction: sensitive fields like `api_key`/`X-API-Key`/`authorization` are redacted from structured logs.
 
 Portability
 - macOS/Linux; Python 3.11+.
@@ -298,4 +300,3 @@ Files
 ## 15. CLI Naming Note
 
 The project is named `limitless_tools`. The CLI will be exposed as `limitless` for brevity. If conflicts arise, we can also provide an alias `limitless-tools` during packaging.
-

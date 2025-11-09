@@ -2,6 +2,10 @@
 
 A Python 3.11+ library and CLI to fetch and store Limitless lifelogs locally as JSON. Built with TDD and clean, extensible architecture.
 
+[![CI](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 - PRD: docs/PRD.md
 - Default data dir: `~/limitless_tools/data/lifelogs` (configurable)
 
@@ -73,5 +77,14 @@ Run locally:
 
 ```
 ruff check .
-mypy .
+mypy limitless_tools
 ```
+
+## Security & Privacy
+
+- No unexpected egress: the HTTP client enforces a base URL allowlist (default: `api.limitless.ai`, `localhost`, `127.0.0.1`).
+  - Extend with `LIMITLESS_URL_ALLOWLIST="host1,host2"` or bypass with `LIMITLESS_ALLOW_UNSAFE_URLS=1` if you explicitly need it.
+- Log redaction: secret‑like fields (e.g., `api_key`, `X-API-Key`, `authorization`, `token`, `password`, `secret`) are redacted as `[REDACTED]` in structured logs.
+- Secret scanning: a `detect-secrets` pre‑commit hook and baseline are included.
+  - Install hooks: `pre-commit install`
+  - Run locally: `pre-commit run --all-files`

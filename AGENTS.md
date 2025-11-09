@@ -14,7 +14,7 @@
 - Setup: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements-dev.txt`
 - Test: `python -m pytest -q` (filter with `-k pattern`). Using `python -m` ensures the venv’s Python runs pytest.
 - Lint: `ruff check .` (configured in `pyproject.toml`).
-- Types: `mypy .` (Python 3.11, strict for src; relaxed for tests).
+ - Types: `mypy limitless_tools` (Python 3.11 target; focus on src only).
 - Run CLI via module:
   - Fetch: `python -m limitless_tools.cli.main fetch --limit 5 [--json] [--batch-size 50]`
   - Sync: `python -m limitless_tools.cli.main sync --start 2025-01-01 --end 2025-01-31 --timezone UTC [--json]`

@@ -1,0 +1,23 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
+
+## [Unreleased]
+
+### Added
+- Pre‑release docs: CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, RELEASING
+- GitHub issue and PR templates
+
+## [0.1.0] - 2025-11-09
+
+### Added
+- Initial CLI commands: `fetch`, `sync`, `list`, `search`, `export-markdown`, `export-csv`, `configure` (and `fetch-audio` placeholder)
+- HTTP client with auth, retries/backoff, Retry‑After handling, and improved error messages
+- Storage: date‑partitioned JSON persistence, index merge, and incremental sync state
+- Services: lifelog pagination and orchestration
+- Config: env/.env integration, TOML config with profiles and precedence, timezone helpers, JSON logging
+- Local search over index (regex/fuzzy) and CSV/Markdown export features
+- TDD unit tests across layers (client, services, storage, CLI)
+

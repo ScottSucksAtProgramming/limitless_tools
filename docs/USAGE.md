@@ -39,8 +39,16 @@ Run linters/type checks:
 
 ```
 ruff check .
-mypy .
+mypy limitless_tools
 ```
+
+## Security & Privacy
+
+- Egress control: the HTTP client enforces a base URL allowlist so data is only sent to trusted hosts. Default allowlist: `api.limitless.ai`, `localhost`, `127.0.0.1`. Extend with `LIMITLESS_URL_ALLOWLIST="host1,host2"` or bypass with `LIMITLESS_ALLOW_UNSAFE_URLS=1` if you explicitly need it.
+- Log redaction: sensitive fields (e.g., `api_key`, `X-API-Key`, `authorization`, `token`, `password`, `secret`) are redacted as `[REDACTED]` in structured logs.
+- Secret scanning: a `detect-secrets` pre‑commit hook and baseline are included.
+  - Install hooks: `pre-commit install`
+  - Run locally: `pre-commit run --all-files`
 
 ## CLI commands
 
