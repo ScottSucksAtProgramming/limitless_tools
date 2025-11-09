@@ -32,8 +32,8 @@ class FakeResponse:
 
 
 def test_cursors_are_per_signature(tmp_path):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     # First run: starred-only True writes STARCUR
     s1 = CursorSession(["STARCUR"])

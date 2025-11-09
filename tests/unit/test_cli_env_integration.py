@@ -3,7 +3,6 @@ CLI should load .env before parsing so env-based defaults apply.
 Single assert per test.
 """
 
-import os
 from pathlib import Path
 
 

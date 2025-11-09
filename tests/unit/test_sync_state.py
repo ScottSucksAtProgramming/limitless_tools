@@ -65,8 +65,8 @@ def _pages():
 
 
 def test_state_records_last_end_and_used_as_start(tmp_path: Path):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     session = RecordingSession(_pages())
     client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)

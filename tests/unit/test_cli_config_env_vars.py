@@ -66,6 +66,6 @@ def test_env_LIMITLESS_PROFILE_selects_profile(monkeypatch, tmp_path: Path):
     monkeypatch.setenv("LIMITLESS_CONFIG", str(cfg))
     monkeypatch.setenv("LIMITLESS_PROFILE", "work")
 
-    code = cli_main.main(["sync", "--start", "2025-01-01", "--end", "2025-01-02"]) 
+    code = cli_main.main(["sync", "--start", "2025-01-01", "--end", "2025-01-02"])
     assert code == 0 and called["init_kwargs"]["data_dir"].endswith("work_dir") and called["sync_kwargs"]["batch_size"] == 88
 

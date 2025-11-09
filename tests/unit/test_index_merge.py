@@ -8,8 +8,8 @@ from pathlib import Path
 
 
 def test_index_merged_without_losing_entries(tmp_path: Path):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     # Pre-existing index with iOld
     (tmp_path / "index.json").write_text(json.dumps([

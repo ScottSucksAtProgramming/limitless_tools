@@ -3,7 +3,6 @@ Tests for CLI parsing and dispatch for `fetch` command.
 Single assert per test; we monkeypatch the service used by the CLI to capture calls.
 """
 
-from types import SimpleNamespace
 
 
 def test_cli_fetch_invokes_service_with_parsed_args(monkeypatch, tmp_path):

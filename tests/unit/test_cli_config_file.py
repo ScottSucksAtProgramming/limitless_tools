@@ -3,7 +3,6 @@ MVP config file support: TOML with profiles and precedence.
 Single assert per test.
 """
 
-import os
 from pathlib import Path
 
 

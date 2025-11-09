@@ -37,8 +37,8 @@ def _page_with_cursor(next_cursor):
 
 
 def test_cursor_saved_and_used(tmp_path):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     s1 = CursorSession([_page_with_cursor("ABC")])
     c1 = LimitlessClient(api_key="K", base_url="https://api.limitless.ai", session=s1)

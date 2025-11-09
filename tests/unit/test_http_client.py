@@ -3,31 +3,30 @@ Tests for LimitlessClient HTTP behavior: auth header, base URL formation, and pa
 Single assert per test to pinpoint failures.
 """
 
-from typing import Any, Dict, Optional
-
 import json
+from typing import Any
 
 
 class FakeResponse:
-    def __init__(self, payload: Dict[str, Any], status_code: int = 200):
+    def __init__(self, payload: dict[str, Any], status_code: int = 200):
         self._payload = payload
         self.status_code = status_code
         self.ok = status_code == 200
 
-    def json(self) -> Dict[str, Any]:
+    def json(self) -> dict[str, Any]:
         # Return a deep copy-like object to guard against mutation in code under test
         return json.loads(json.dumps(self._payload))
 
 
 class FakeSession:
-    def __init__(self, pages: list[Dict[str, Any]]):
+    def __init__(self, pages: list[dict[str, Any]]):
         self._pages = pages
         self._i = 0
-        self.last_url: Optional[str] = None
-        self.last_headers: Optional[Dict[str, str]] = None
-        self.last_params: Optional[Dict[str, Any]] = None
+        self.last_url: str | None = None
+        self.last_headers: dict[str, str] | None = None
+        self.last_params: dict[str, Any] | None = None
 
-    def get(self, url: str, headers: Dict[str, str], params: Dict[str, Any]):
+    def get(self, url: str, headers: dict[str, str], params: dict[str, Any]):
         self.last_url = url
         self.last_headers = headers
         self.last_params = params

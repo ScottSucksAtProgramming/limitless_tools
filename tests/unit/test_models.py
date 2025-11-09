@@ -5,7 +5,7 @@ Single assert per test.
 
 
 def test_lifelog_model_parses_minimal_dict():
-    from limitless_tools.models.lifelog import Lifelog, ContentNode
+    from limitless_tools.models.lifelog import Lifelog
 
     data = {
         "id": "m1",

@@ -63,8 +63,8 @@ def _pages():
 
 
 def test_sync_writes_index(tmp_path: Path):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     session = FakeSession(_pages())
     client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)

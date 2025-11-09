@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 @dataclass
@@ -15,7 +15,7 @@ class StateRepository:
         lifelogs_dir = Path(self.base_lifelogs_dir)
         return lifelogs_dir.parent / "state" / "lifelogs_sync.json"
 
-    def load(self) -> Dict[str, Any]:
+    def load(self) -> dict[str, Any]:
         p = self._state_path
         if not p.exists():
             return {}
@@ -24,7 +24,7 @@ class StateRepository:
         except Exception:
             return {}
 
-    def save(self, state: Dict[str, Any]) -> None:
+    def save(self, state: dict[str, Any]) -> None:
         p = self._state_path
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(state, ensure_ascii=False, indent=2))
