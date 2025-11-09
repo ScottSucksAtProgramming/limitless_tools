@@ -19,3 +19,8 @@ venv/
 # Data (user can change location)
 data/
 
+# Build artifacts
+dist/
+build/
+
+.venv311/
