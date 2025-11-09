@@ -1,8 +1,7 @@
 from __future__ import annotations
 
 import os
-import sys
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 def default_config_path() -> str:
@@ -15,13 +14,13 @@ def default_config_path() -> str:
     return os.path.join(base, "config.toml")
 
 
-def _parse_toml_minimal(text: str) -> Dict[str, Dict[str, Any]]:
+def _parse_toml_minimal(text: str) -> dict[str, dict[str, Any]]:
     """Very small TOML parser supporting [sections] and key=value.
 
     Supports strings (".." or '..'), ints, floats, booleans.
     Not a full TOML parser; sufficient for our tests and simple config.
     """
-    data: Dict[str, Dict[str, Any]] = {}
+    data: dict[str, dict[str, Any]] = {}
     section = "default"
     data[section] = {}
     for raw in text.splitlines():
@@ -58,7 +57,7 @@ def _parse_toml_minimal(text: str) -> Dict[str, Dict[str, Any]]:
     return data
 
 
-def load_config(path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
+def load_config(path: str | None = None) -> dict[str, dict[str, Any]]:
     """Load a TOML config file into a nested dict keyed by profile/section.
 
     Returns an empty dict if no file exists or parsing fails.
@@ -67,19 +66,19 @@ def load_config(path: Optional[str] = None) -> Dict[str, Dict[str, Any]]:
     try:
         if not os.path.exists(cfg_path):
             return {}
-        text = open(cfg_path, "r", encoding="utf-8").read()
+        text = open(cfg_path, encoding="utf-8").read()
         # Try tomllib if available (Python 3.11+)
         try:
-            import tomllib  # type: ignore
+            import tomllib
 
-            return tomllib.loads(text)  # type: ignore[no-any-return]
+            return tomllib.loads(text)
         except Exception:
             return _parse_toml_minimal(text)
     except Exception:
         return {}
 
 
-def get_profile(config: Dict[str, Dict[str, Any]], profile: Optional[str]) -> Dict[str, Any]:
+def get_profile(config: dict[str, dict[str, Any]], profile: str | None) -> dict[str, Any]:
     """Return the selected profile dictionary (default section if absent)."""
     if not config:
         return {}
@@ -89,12 +88,11 @@ def get_profile(config: Dict[str, Dict[str, Any]], profile: Optional[str]) -> Di
     return config.get("default", {}) or {}
 
 
-def save_config(path: str, config: Dict[str, Dict[str, Any]]) -> None:
+def save_config(path: str, config: dict[str, dict[str, Any]]) -> None:
     """Write the config dict to TOML at path, creating parent directories.
 
     Minimal TOML writer supporting strings, ints, floats, and booleans.
     """
-    import os as _os
     from pathlib import Path as _Path
 
     def _format(v: Any) -> str:

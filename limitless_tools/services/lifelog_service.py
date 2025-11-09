@@ -1,36 +1,35 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
 
+from limitless_tools.config.env import resolve_timezone
 from limitless_tools.http.client import LimitlessClient
 from limitless_tools.storage.json_repo import JsonFileRepository
 from limitless_tools.storage.state_repo import StateRepository
-from limitless_tools.config.env import resolve_timezone
 
 
 @dataclass
 class LifelogService:
-    api_key: Optional[str]
-    api_url: Optional[str]
-    data_dir: Optional[str]
-    client: Optional[LimitlessClient] = None
-    repo: Optional[JsonFileRepository] = None
+    api_key: str | None
+    api_url: str | None
+    data_dir: str | None
+    client: LimitlessClient | None = None
+    repo: JsonFileRepository | None = None
 
     def fetch(
         self,
         *,
-        limit: Optional[int] = None,
+        limit: int | None = None,
         direction: str = "desc",
         include_markdown: bool = True,
         include_headings: bool = True,
-        date: Optional[str] = None,
-        start: Optional[str] = None,
-        end: Optional[str] = None,
-        timezone: Optional[str] = None,
-        is_starred: Optional[bool] = None,
+        date: str | None = None,
+        start: str | None = None,
+        end: str | None = None,
+        timezone: str | None = None,
+        is_starred: bool | None = None,
         batch_size: int = 50,
-    ) -> List[str]:
+    ) -> list[str]:
         """Fetch lifelogs from API and save them to JSON files. Returns saved file paths."""
 
         client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
@@ -49,7 +48,7 @@ class LifelogService:
             batch_size=batch_size,
         )
 
-        saved_paths: List[str] = []
+        saved_paths: list[str] = []
         for item in lifelogs:
             saved_paths.append(repo.save_lifelog(item))
 
@@ -72,7 +71,8 @@ class LifelogService:
         # Load previous state and derive default start if none provided
         st = state_repo.load()
         # Compute a signature for the current sync parameters
-        import hashlib, json as _json
+        import hashlib
+        import json as _json
         sig_dict = {
             "date": date,
             "start": start,
@@ -120,8 +120,8 @@ class LifelogService:
             )
 
         # write index.json at base dir
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         base = Path(self.data_dir or "")
         base.mkdir(parents=True, exist_ok=True)
@@ -167,8 +167,8 @@ class LifelogService:
         is_starred: bool | None = None,
     ) -> list[dict[str, object]]:
         """List locally stored lifelogs, optionally filtered by date (YYYY-MM-DD) and starred."""
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         base = Path(self.data_dir or "")
         results: list[dict[str, object]] = []
@@ -210,8 +210,8 @@ class LifelogService:
 
     def export_markdown(self, *, limit: int = 1) -> str:
         """Return concatenated markdown from the latest N local lifelogs (by startTime)."""
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         base = Path(self.data_dir or "")
         entries: list[dict[str, object]] = []
@@ -247,8 +247,9 @@ class LifelogService:
 
         Returns a list of summary dicts similar to list_local.
         """
+        import json
+        import re
         from pathlib import Path
-        import json, re
 
         q = (query or "").strip()
         if not q:
@@ -263,7 +264,7 @@ class LifelogService:
         # optional fuzzy scorer
         rf_scorer = None
         try:
-            from rapidfuzz import fuzz as _rf  # type: ignore
+            from rapidfuzz import fuzz as _rf
 
             def _rf_score(a: str, b: str) -> int:
                 # partial_ratio is a good default for substring-like fuzziness
@@ -326,10 +327,10 @@ class LifelogService:
                 match = ql in title.lower()
             if not match:
                 # try markdown by opening file
-                p = it.get("path")
+                path_str = it.get("path")
                 try:
-                    if isinstance(p, str) and p:
-                        obj = json.loads(Path(p).read_text())
+                    if isinstance(path_str, str) and path_str:
+                        obj = json.loads(Path(path_str).read_text())
                         md = obj.get("markdown")
                         if isinstance(md, str) and md:
                             if regex and pattern is not None:
@@ -351,8 +352,8 @@ class LifelogService:
 
     def export_markdown_by_date(self, *, date: str, frontmatter: bool = False) -> str:
         """Return concatenated markdown for all lifelogs on a specific date."""
-        from pathlib import Path
         import json
+        from pathlib import Path
 
         base = Path(self.data_dir or "")
         entries: list[dict[str, object]] = []
@@ -392,9 +393,10 @@ class LifelogService:
 
     def export_csv(self, *, date: str | None = None, include_markdown: bool = False) -> str:
         """Return CSV for lifelogs with optional markdown column."""
-        from pathlib import Path
-        import json, csv
+        import csv
+        import json
         from io import StringIO
+        from pathlib import Path
 
         base = Path(self.data_dir or "")
         # Prefer index for listing paths
@@ -443,10 +445,10 @@ class LifelogService:
             row = {k: it.get(k) for k in fieldnames if k != "markdown"}
             if include_markdown:
                 md = ""
-                p = it.get("path")
+                path_str = it.get("path")
                 try:
-                    if isinstance(p, str) and p:
-                        obj = json.loads(Path(p).read_text())
+                    if isinstance(path_str, str) and path_str:
+                        obj = json.loads(Path(path_str).read_text())
                         mdt = obj.get("markdown")
                         if isinstance(mdt, str):
                             md = mdt

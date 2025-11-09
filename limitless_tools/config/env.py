@@ -8,7 +8,7 @@ def load_env() -> None:
     load_dotenv = None
     find_dotenv = None
     try:
-        from dotenv import load_dotenv as _ld, find_dotenv as _fd  # type: ignore
+        from dotenv import find_dotenv as _fd, load_dotenv as _ld
         load_dotenv = _ld
         find_dotenv = _fd
     except Exception:
@@ -23,7 +23,7 @@ def load_env() -> None:
     try:
         path = os.path.join(os.getcwd(), ".env")
         if os.path.exists(path):
-            with open(path, "r") as f:
+            with open(path) as f:
                 for line in f:
                     line = line.strip()
                     if not line or line.startswith("#") or "=" not in line:
@@ -39,7 +39,7 @@ def resolve_timezone(tz: str | None) -> str | None:
     if tz:
         return tz
     try:
-        import tzlocal  # type: ignore
+        import tzlocal
         return tzlocal.get_localzone_name()
     except Exception:
         return None

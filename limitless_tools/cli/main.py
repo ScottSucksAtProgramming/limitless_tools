@@ -1,17 +1,16 @@
 from __future__ import annotations
 
 import argparse
-import os
-from typing import List, Optional
-
-from limitless_tools.services.lifelog_service import LifelogService
-from limitless_tools.config.paths import default_data_dir
-from limitless_tools.config.env import load_env
-from limitless_tools.config.logging import setup_logging
-from limitless_tools.config.config import load_config, get_profile, default_config_path
 import logging
+import os
 import sys
 from zoneinfo import ZoneInfo
+
+from limitless_tools.config.config import default_config_path, get_profile, load_config
+from limitless_tools.config.env import load_env
+from limitless_tools.config.logging import setup_logging
+from limitless_tools.config.paths import default_data_dir
+from limitless_tools.services.lifelog_service import LifelogService
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -94,7 +93,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main(argv: Optional[List[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     # Ensure .env and related environment variables are loaded before parsing
     load_env()
     parser = _build_parser()
@@ -124,17 +123,17 @@ def main(argv: Optional[List[str]] = None) -> int:
     # data_dir precedence
     if not _provided("--data-dir") and not os.getenv("LIMITLESS_DATA_DIR"):
         if isinstance(prof.get("data_dir"), str):
-            setattr(args, "data_dir", prof["data_dir"])  # type: ignore[index]
+            setattr(args, "data_dir", prof["data_dir"])
 
     # batch_size precedence for fetch/sync
     if not _provided("--batch-size") and isinstance(prof.get("batch_size"), (int, float)):
         # argparse stores parsed ints; coerce to int
-        setattr(args, "batch_size", int(prof["batch_size"]))  # type: ignore[index]
+        setattr(args, "batch_size", int(prof["batch_size"]))
 
     # timezone precedence for sync
     if getattr(args, "command", None) == "sync" and not _provided("--timezone") and not os.getenv("LIMITLESS_TZ"):
         if isinstance(prof.get("timezone"), str):
-            setattr(args, "timezone", prof["timezone"])  # type: ignore[index]
+            setattr(args, "timezone", prof["timezone"])
 
     # Resolve API credentials
     resolved_api_key = os.getenv("LIMITLESS_API_KEY") or (prof.get("api_key") if isinstance(prof.get("api_key"), str) else None)
@@ -158,7 +157,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             docs = []
             for p in saved:
                 try:
-                    with open(p, "r", encoding="utf-8") as _f:
+                    with open(p, encoding="utf-8") as _f:
                         obj = _json.loads(_f.read())
                     docs.append({
                         "id": obj.get("id"),
@@ -202,7 +201,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             items = []
             for p in saved:
                 try:
-                    with open(p, "r", encoding="utf-8") as _f:
+                    with open(p, encoding="utf-8") as _f:
                         obj = _json.loads(_f.read())
                     items.append({
                         "id": obj.get("id"),
@@ -286,9 +285,9 @@ def main(argv: Optional[List[str]] = None) -> int:
             eff_output = _os.path.join(cfg_output_dir, base)
         if eff_output:
             from pathlib import Path as _Path
-            p = _Path(eff_output)
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(csv_text)
+            out_path = _Path(eff_output)
+            out_path.parent.mkdir(parents=True, exist_ok=True)
+            out_path.write_text(csv_text)
         else:
             print(csv_text)
         return 0

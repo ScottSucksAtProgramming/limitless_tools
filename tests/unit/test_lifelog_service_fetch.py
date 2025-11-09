@@ -4,7 +4,6 @@ Single assert per test.
 """
 
 from pathlib import Path
-from typing import Any, Dict
 
 
 class FakeResponse:
@@ -68,8 +67,8 @@ def _make_pages():
 
 
 def test_service_fetch_saves_files(tmp_path: Path, monkeypatch):
-    from limitless_tools.services.lifelog_service import LifelogService
     from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
 
     # Build a client with fake session and inject into service
     session = FakeSession(_make_pages())
@@ -78,8 +77,7 @@ def test_service_fetch_saves_files(tmp_path: Path, monkeypatch):
     # Allow service to use our injected client
     service = LifelogService(api_key="KEY", api_url="https://api.limitless.ai", data_dir=str(tmp_path), client=client)
 
-    files = service.fetch(limit=None, include_markdown=True, include_headings=True, direction="desc")
+    _ = service.fetch(limit=None, include_markdown=True, include_headings=True, direction="desc")
 
     saved = sorted([p.name for p in tmp_path.rglob("*.json")])
     assert saved == ["lifelog_svcA.json", "lifelog_svcB.json"]
-

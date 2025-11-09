@@ -38,6 +38,5 @@ def test_retries_on_429_then_succeeds():
     client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session, max_retries=3, backoff_factor=0.1, sleep_fn=fake_sleep)
 
     # Should succeed after 2 retries, with at least two sleeps recorded
-    result = client.get_lifelogs(limit=1)
+    _ = client.get_lifelogs(limit=1)
     assert len(sleeps) == 2
-
