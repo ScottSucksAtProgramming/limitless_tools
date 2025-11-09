@@ -1,15 +1,15 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterator
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Optional
 
-from limitless_tools.services.lifelog_service import LifelogService
 from limitless_tools.config.paths import default_data_dir
+from limitless_tools.services.lifelog_service import LifelogService
 
 
-def _iter_dates(start_date: str, end_date: str):
+def _iter_dates(start_date: str, end_date: str) -> Iterator[str]:
     start = datetime.strptime(start_date, "%Y-%m-%d").date()
     end = datetime.strptime(end_date, "%Y-%m-%d").date()
     if end < start:
@@ -20,7 +20,7 @@ def _iter_dates(start_date: str, end_date: str):
         d += timedelta(days=1)
 
 
-def _resolve_lifelogs_dir(path: Optional[str]) -> str:
+def _resolve_lifelogs_dir(path: str | None) -> str:
     """Return a directory that contains lifelog_*.json files.
 
     Accept either the lifelogs directory itself (~/.../data/lifelogs) or its parent (~/.../data).
@@ -44,7 +44,7 @@ def export_range(
     *,
     start: str,
     end: str,
-    data_dir: Optional[str],
+    data_dir: str | None,
     out_dir: str,
     frontmatter: bool = False,
     skip_empty: bool = True,
@@ -66,7 +66,7 @@ def export_range(
     return 0
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description="Export combined markdown for a date range")
     p.add_argument("--start", required=True, help="Start date YYYY-MM-DD")
     p.add_argument("--end", required=True, help="End date YYYY-MM-DD (inclusive)")
