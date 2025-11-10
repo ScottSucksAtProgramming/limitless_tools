@@ -44,6 +44,23 @@ python3 -m limitless_tools.cli.main fetch \
     --include-headings
 ```
 
+## Installation
+
+Once published, install the CLI with:
+
+```
+pip install limitless-tools
+# or install it into an isolated environment:
+pipx install limitless-tools
+```
+
+For local development you can keep an editable install around and run the console script directly:
+
+```
+pip install -e .
+limitless --help
+```
+
 ## Configuration
 
 - Example config file: `config.toml.example` in this repo.
@@ -67,6 +84,28 @@ Notes: You can define multiple profiles (e.g., `[default]`, `[work]`) and select
 
 - Uses pagination with sensible defaults. See docs/PRD.md for detailed requirements and roadmap.
 - TDD-first: tests are single-assert and documented for clarity.
+
+## CLI at a glance
+
+- `limitless fetch --limit 10 --direction desc` — fetch the latest entries with markdown/headings by default.
+- `limitless sync --date 2025-11-01 --timezone UTC` — incremental sync that updates `index.json` and sync state.
+- `limitless list --date 2025-11-01 --json` — list indexed lifelogs filtered by date and starred status.
+- `limitless search --query "meeting notes" --regex` — search titles and markdown with regex or fuzzy matching.
+- `limitless export-markdown --limit 5` / `--date YYYY-MM-DD --combine` — print or write markdown exports.
+- `limitless export-csv --date 2025-11-01 --output /tmp/lifelogs.csv` — dump metadata (add `--include-markdown` to include body content).
+
+## Documentation
+
+- Usage guide: docs/USAGE.md
+- PRD & roadmap: docs/PRD.md
+- Audio research: docs/AUDIO.md
+- Task tracker: docs/TASKS.md
+
+## Links
+
+- Changelog: CHANGELOG.md
+- Contributing & workflow: CONTRIBUTING.md
+- Security policy: SECURITY.md
 
 ## Code quality
 

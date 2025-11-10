@@ -18,6 +18,31 @@ pip install -r requirements-dev.txt
 
 Optional: copy `.env.example` to `.env` and fill in variables. The CLI automatically loads `.env` from the current directory (or parents) on startup, so environment-based defaults like `LIMITLESS_DATA_DIR` and `LIMITLESS_API_KEY` are honored without extra flags. You can also export environment variables in your shell.
 
+## Installation
+
+Once published, install the CLI with:
+
+```
+pip install limitless-tools
+pipx install limitless-tools  # isolated CLI installs
+```
+
+## Library usage
+
+```python
+from limitless_tools.services.lifelog_service import LifelogService
+
+service = LifelogService(
+    api_key="YOUR_API_KEY",
+    data_dir="~/limitless_tools/data/lifelogs",
+)
+
+# Fetch and sync data programmatically
+service.fetch(limit=5, batch_size=50)
+# Export or list using the same service helpers
+service.export_csv(date="2025-11-01")
+```
+
 ## Editable install (optional)
 
 Install the package locally to get a `limitless` CLI command:
@@ -52,7 +77,7 @@ mypy limitless_tools
 
 ## CLI commands
 
-All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`).
+All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`). Use `-v/--verbose` to emit structured JSON debug logs to stderr for troubleshooting.
 
 - Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings. Use `--json` to print a JSON array of saved item summaries to stdout.
 
@@ -88,6 +113,8 @@ python -m limitless_tools.cli.main search --query "meet.*notes" -rg --data-dir /
 python -m limitless_tools.cli.main search --query "Weekly Meeting" --fuzzy --fuzzy-threshold 80 --json
 ```
 
+Regex searches accept `--regex` or the short form `-rg` and are case-insensitive; fuzzy search uses `rapidfuzz` when available (falls back to `difflib`) with `--fuzzy-threshold` defaulting to `80`.
+
 ### Configuration file (MVP)
 
 You can store defaults in a user config TOML and select profiles via `--profile`:
@@ -119,6 +146,13 @@ Use a profile:
 ```
 python -m limitless_tools.cli.main --profile work fetch --limit 5
 ```
+
+| Source | Description |
+| --- | --- |
+| CLI flags | Highest precedence (e.g., `--data-dir`, `--profile`, `--output`, `--write-dir`). |
+| Environment variables | `LIMITLESS_API_KEY`, `LIMITLESS_DATA_DIR`, `LIMITLESS_TZ`, etc. |
+| Config file profile | Per-profile defaults such as `data_dir`, `timezone`, `batch_size`, `output_dir`. |
+| Built-in defaults | Provided by the CLI (`batch_size=50`, `direction=desc`, default data paths). |
 
 ## Configure via CLI
 
@@ -167,6 +201,8 @@ python -m limitless_tools.cli.main sync \
   --start 2025-01-01 --end 2025-01-31 --timezone America/Los_Angeles \
   --batch-size 100
 
+# Invalid timezone values exit with code 2 and print a short message; provide a valid IANA name (e.g., `UTC`, `America/Los_Angeles`).
+
 # or a single day
 python -m limitless_tools.cli.main sync --date 2025-01-15
 ```
@@ -193,6 +229,8 @@ python -m limitless_tools.cli.main export-markdown \
   --combine
 ```
 
+- The `--combine` mode requires both `--date` and either `--write-dir` or a configured `output_dir`; otherwise the CLI prints an error.
+
 - Export CSV metadata (optionally include markdown):
 
 ```
@@ -203,6 +241,15 @@ python -m limitless_tools.cli.main export-csv \
   --output /tmp/lifelogs_2025-12-01.csv
 ```
 
+- CSV includes columns `id,startTime,endTime,title,isStarred,updatedAt,path`; add markdown text via `--include-markdown` (appends a `markdown` column).
+- Without `--output`, CSV writes to stdout unless the profile defines `output_dir`, in which case it writes `lifelogs_<date>.csv` or `lifelogs.csv` there automatically.
+
+## Export behavior
+
+- `export-markdown --combine` writes to `--write-dir` or the configured `output_dir`. Without `--combine`, text streams to stdout.
+- `export-csv` writes to `--output` if provided; otherwise it falls back to the profile `output_dir` or stdout, and uses `lifelogs_<date>.csv` when you pass `--date`.
+- The CSV payload always includes `id,startTime,endTime,title,isStarred,updatedAt,path`, with `markdown` optionally added.
+ 
 ## Bulk export script
 
 For exporting many days at once (e.g., to an Obsidian vault), use the helper script. You can point `--data-dir` to either the lifelogs directory (`~/limitless_tools/data/lifelogs`) or its parent (`~/limitless_tools/data`) — the script auto-detects `lifelogs/`.
