@@ -29,10 +29,17 @@ Status: living document; update as work progresses. Use TDD for every task.
   - Log redaction of secret-like fields
   - detect-secrets pre-commit hook and baseline
 - CI: ruff, mypy, pytest; packaging job builds wheels and runs twine check + smoke install
+- Repo docs and templates: LICENSE (MIT), CHANGELOG, CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, RELEASING, issue/PR templates, CODEOWNERS
+- README badges added (CI, CodeQL, License) and Security section documented
+- Packaging metadata modernized (SPDX license + license-files) and `py.typed` included
+- Local packaging validation performed (build sdist/wheel, twine check, 3.11+ smoke install)
+- Pre-commit configured (ruff, mypy, detect-secrets)
+- Mypy scoped to src (`mypy limitless_tools`); tests remain relaxed
 
 ## In Progress / Next Up
-- Pre‑release quality gate and docs polish
-- Release preparation (public GitHub): see sections below
+- Release preparation on public GitHub (create repo, push code/history, enable branch protection & secret scanning)
+- TestPyPI dry run then PyPI publish for v0.1.0
+- Optional docs polish (architecture diagram, README badges for PyPI after publish)
 
 ## Pre‑Release Quality Gate (local)
  - Ruff clean: `ruff check .` (resolve all findings or add explicit ignores with rationale)
@@ -48,24 +55,27 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Secrets: use detect-secrets pre-commit; verify no secrets or local data are committed; `.env`/data paths are gitignored
 
 ## Packaging & Distribution Prep (local)
-- Add build/publish tools to dev deps: `build`, `twine`
-- Add/confirm metadata in `pyproject.toml`: license, classifiers, keywords, `project.urls` (Source, Issues, Docs)
-- Include license files in sdist (e.g., `[tool.setuptools] license-files = ["LICENSE*"]`)
-- Provide `py.typed` to ship type hints (optional but recommended for libraries)
-- Build artifacts: `python -m build` (wheel + sdist); run `twine check dist/*`
-- Install smoke test in a clean venv: `pip install dist/*.whl`; run `limitless --help`
-- Verify project name availability on (Test)PyPI; adjust if needed
-- Prepare TestPyPI publish flow (manual at first): `twine upload --repository testpypi dist/*`
+Completed:
+- Build/publish tools added to dev deps (`build`, `twine`)
+- Metadata confirmed in `pyproject.toml` (license SPDX, classifiers, keywords, `project.urls`)
+- License files included in sdist (via `project.license-files`)
+- `py.typed` provided for type hints
+- Artifacts built and checked (`python -m build`; `twine check dist/*`)
+- Smoke install verified in a Python 3.11+ venv
 
-## Documentation & Files (local)
-- LICENSE (choose MIT/Apache‑2.0) and add to repo
-- CHANGELOG.md (Keep a Changelog format); set version to `0.1.0`
-- CONTRIBUTING.md (env setup, commands, coding style, tests, TDD notes)
+Remaining:
+- Verify project name availability on (Test)PyPI; adjust if needed
+- Prepare TestPyPI publish flow: `twine upload --repository testpypi dist/*`
+
+## Documentation & Files (completed)
+- LICENSE (MIT)
+- CHANGELOG.md (Keep a Changelog; version initialized `0.1.0`)
+- CONTRIBUTING.md (env setup, commands, coding style, tests, TDD)
 - CODE_OF_CONDUCT.md (Contributor Covenant)
 - SECURITY.md (how to report vulnerabilities; supported versions)
-- RELEASING.md (tagging, build, publish to TestPyPI/PyPI, Homebrew notes)
-- README: badges (CI, PyPI, Python 3.11+), quick start, link to `docs/USAGE.md`; use absolute links that render on PyPI
-- Add issue/PR templates under `.github/` and optional `CODEOWNERS`
+- RELEASING.md (tagging, build, TestPyPI/PyPI, Homebrew notes)
+- README: badges (CI, CodeQL, License), quick start, link to `docs/USAGE.md`, Security section
+- Issue/PR templates and CODEOWNERS
 
 ## CI Workflow (prepared locally; activates after GitHub push)
 - `.github/workflows/ci.yml`: Ubuntu, Python 3.11, `TZ=UTC`, pip cache, ruff, mypy, pytest
