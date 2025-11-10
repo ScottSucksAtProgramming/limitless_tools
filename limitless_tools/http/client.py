@@ -1,12 +1,15 @@
 from __future__ import annotations
 
+import logging
 import os
 from typing import Any
 
 try:
     import requests
-except Exception:  # pragma: no cover - requests should be present in dev
+except ImportError:  # pragma: no cover - requests should be present in dev
     requests = None
+
+log = logging.getLogger(__name__)
 
 
 class LimitlessClient:
@@ -31,10 +34,11 @@ class LimitlessClient:
         self.retry_statuses = retry_statuses
         # Default request timeout (seconds)
         if timeout is None:
+            env_to = os.getenv("LIMITLESS_HTTP_TIMEOUT")
             try:
-                env_to = os.getenv("LIMITLESS_HTTP_TIMEOUT")
                 self.timeout = float(env_to) if env_to else 10.0
-            except Exception:
+            except (ValueError, TypeError) as exc:
+                log.debug("Invalid LIMITLESS_HTTP_TIMEOUT (%s): %s", env_to, exc)
                 self.timeout = 10.0
         else:
             self.timeout = timeout
@@ -52,8 +56,8 @@ class LimitlessClient:
             from importlib.metadata import version
 
             ua = f"limitless-tools/{version('limitless-tools')}"
-        except Exception:
-            pass
+        except (ImportError, ModuleNotFoundError) as exc:
+            log.debug("Failed to read package metadata: %s", exc)
         return {"X-API-Key": self.api_key, "User-Agent": ua}
 
     def _enforce_base_url_allowlist(self) -> None:
@@ -69,7 +73,8 @@ class LimitlessClient:
             from urllib.parse import urlparse
 
             host = urlparse(self.base_url).hostname or ""
-        except Exception:
+        except (ImportError, ValueError, AttributeError) as exc:
+            log.debug("Failed to parse base URL host %s: %s", self.base_url, exc)
             host = ""
         default_allowed = {"api.limitless.ai", "localhost", "127.0.0.1"}
         extra = os.getenv("LIMITLESS_URL_ALLOWLIST", "")
@@ -141,8 +146,8 @@ class LimitlessClient:
                         p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
                     ):
                         req_kwargs["timeout"] = self.timeout
-                except Exception:
-                    pass
+                except (AttributeError, ValueError, TypeError) as exc:
+                    log.debug("Session.get signature missing timeout: %s", exc)
                 resp = self.session.get(url, headers=self._headers(), params=params, **req_kwargs)  # type: ignore[union-attr]
                 if getattr(resp, "ok", False):
                     break

@@ -1,11 +1,25 @@
 from __future__ import annotations
 
+import hashlib
+import json
+import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 from limitless_tools.config.env import resolve_timezone
 from limitless_tools.http.client import LimitlessClient
 from limitless_tools.storage.json_repo import JsonFileRepository
 from limitless_tools.storage.state_repo import StateRepository
+
+log = logging.getLogger(__name__)
+
+
+def _load_json(path: Path) -> object | None:
+    try:
+        return json.loads(path.read_text())
+    except (json.JSONDecodeError, OSError) as exc:
+        log.debug("Failed to read JSON from %s: %s", path, exc)
+        return None
 
 
 @dataclass
@@ -71,8 +85,6 @@ class LifelogService:
         # Load previous state and derive default start if none provided
         st = state_repo.load()
         # Compute a signature for the current sync parameters
-        import hashlib
-        import json as _json
         sig_dict = {
             "date": date,
             "start": start,
@@ -81,8 +93,8 @@ class LifelogService:
             "is_starred": is_starred,
             "direction": "desc",
         }
-        sig_json = _json.dumps(sig_dict, sort_keys=True, ensure_ascii=False)
-        sig = hashlib.sha1(sig_json.encode("utf-8")).hexdigest()
+        sig_json = json.dumps(sig_dict, sort_keys=True, ensure_ascii=False)
+        sig = hashlib.sha256(sig_json.encode("utf-8")).hexdigest()
         signatures = st.get("signatures", {}) if isinstance(st.get("signatures"), dict) else {}
         sig_state = signatures.get(sig, {})
         eff_start = start or sig_state.get("lastEndTime") or st.get("lastEndTime")
@@ -120,19 +132,15 @@ class LifelogService:
             )
 
         # write index.json at base dir
-        import json
-        from pathlib import Path
-
         base = Path(self.data_dir or "")
         base.mkdir(parents=True, exist_ok=True)
         # merge/update index if exists
         idx_path = base / "index.json"
         existing: list[dict] = []
         if idx_path.exists():
-            try:
-                existing = json.loads(idx_path.read_text())
-            except Exception:
-                existing = []
+            existing_obj = _load_json(idx_path)
+            if isinstance(existing_obj, list):
+                existing = existing_obj
         merged: dict[str, dict] = {str(it.get("id")): it for it in existing}
         for row in index_rows:
             merged[str(row.get("id"))] = row
@@ -144,7 +152,7 @@ class LifelogService:
         if lifelogs:
             try:
                 last_end = max([str(x.get("endTime") or "") for x in lifelogs])
-            except Exception:
+            except (TypeError, ValueError):
                 last_end = None
             if last_end:
                 st["lastEndTime"] = last_end  # top-level for compatibility
@@ -167,9 +175,6 @@ class LifelogService:
         is_starred: bool | None = None,
     ) -> list[dict[str, object]]:
         """List locally stored lifelogs, optionally filtered by date (YYYY-MM-DD) and starred."""
-        import json
-        from pathlib import Path
-
         base = Path(self.data_dir or "")
         results: list[dict[str, object]] = []
 
@@ -177,15 +182,13 @@ class LifelogService:
         idx_path = base / "index.json"
         items: list[dict[str, object]] = []
         if idx_path.exists():
-            try:
-                items = json.loads(idx_path.read_text())
-            except Exception:
-                items = []
+            idx_items = _load_json(idx_path)
+            if isinstance(idx_items, list):
+                items = idx_items
         else:
             for p in base.rglob("lifelog_*.json"):
-                try:
-                    obj = json.loads(p.read_text())
-                except Exception:
+                obj = _load_json(p)
+                if not isinstance(obj, dict):
                     continue
                 items.append(
                     {
@@ -213,15 +216,11 @@ class LifelogService:
 
         If frontmatter is True, prepend YAML blocks per entry similar to export_markdown_by_date.
         """
-        import json
-        from pathlib import Path
-
         base = Path(self.data_dir or "")
         entries: list[dict[str, object]] = []
         for p in base.rglob("lifelog_*.json"):
-            try:
-                obj = json.loads(p.read_text())
-            except Exception:
+            obj = _load_json(p)
+            if not isinstance(obj, dict):
                 continue
             entries.append(obj)
 
@@ -263,9 +262,7 @@ class LifelogService:
 
         Returns a list of summary dicts similar to list_local.
         """
-        import json
         import re
-        from pathlib import Path
 
         q = (query or "").strip()
         if not q:
@@ -287,7 +284,7 @@ class LifelogService:
                 return int(_rf.partial_ratio(a, b))
 
             rf_scorer = _rf_score
-        except Exception:
+        except ImportError:
             rf_scorer = None
         import difflib as _difflib
 
@@ -298,16 +295,14 @@ class LifelogService:
         idx_items: list[dict[str, object]] = []
         idx_path = base / "index.json"
         if idx_path.exists():
-            try:
-                idx_items = json.loads(idx_path.read_text())
-            except Exception:
-                idx_items = []
+            idx_json = _load_json(idx_path)
+            if isinstance(idx_json, list):
+                idx_items = idx_json
         else:
             # Build items by scanning files
             for p in base.rglob("lifelog_*.json"):
-                try:
-                    obj = json.loads(p.read_text())
-                except Exception:
+                obj = _load_json(p)
+                if not isinstance(obj, dict):
                     continue
                 idx_items.append(
                     {
@@ -342,11 +337,10 @@ class LifelogService:
             else:
                 match = ql in title.lower()
             if not match:
-                # try markdown by opening file
                 path_str = it.get("path")
-                try:
-                    if isinstance(path_str, str) and path_str:
-                        obj = json.loads(Path(path_str).read_text())
+                if isinstance(path_str, str) and path_str:
+                    obj = _load_json(Path(path_str))
+                    if isinstance(obj, dict):
                         md = obj.get("markdown")
                         if isinstance(md, str) and md:
                             if regex and pattern is not None:
@@ -359,8 +353,6 @@ class LifelogService:
                                     match = ratio >= max(0, float(fuzzy_threshold))
                             else:
                                 match = ql in md.lower()
-                except Exception:
-                    match = False
             if match:
                 results.append(it)
 
@@ -368,15 +360,11 @@ class LifelogService:
 
     def export_markdown_by_date(self, *, date: str, frontmatter: bool = False) -> str:
         """Return concatenated markdown for all lifelogs on a specific date."""
-        import json
-        from pathlib import Path
-
         base = Path(self.data_dir or "")
         entries: list[dict[str, object]] = []
         for p in base.rglob("lifelog_*.json"):
-            try:
-                obj = json.loads(p.read_text())
-            except Exception:
+            obj = _load_json(p)
+            if not isinstance(obj, dict):
                 continue
             st = str(obj.get("startTime") or "")
             if st[:10] != date:
@@ -410,24 +398,21 @@ class LifelogService:
     def export_csv(self, *, date: str | None = None, include_markdown: bool = False) -> str:
         """Return CSV for lifelogs with optional markdown column."""
         import csv
-        import json
         from io import StringIO
-        from pathlib import Path
+
 
         base = Path(self.data_dir or "")
         # Prefer index for listing paths
         idx_items: list[dict[str, object]] = []
         idx_path = base / "index.json"
         if idx_path.exists():
-            try:
-                idx_items = json.loads(idx_path.read_text())
-            except Exception:
-                idx_items = []
+            idx_json = _load_json(idx_path)
+            if isinstance(idx_json, list):
+                idx_items = idx_json
         else:
             for p in base.rglob("lifelog_*.json"):
-                try:
-                    obj = json.loads(p.read_text())
-                except Exception:
+                obj = _load_json(p)
+                if not isinstance(obj, dict):
                     continue
                 idx_items.append(
                     {
@@ -462,14 +447,12 @@ class LifelogService:
             if include_markdown:
                 md = ""
                 path_str = it.get("path")
-                try:
-                    if isinstance(path_str, str) and path_str:
-                        obj = json.loads(Path(path_str).read_text())
+                if isinstance(path_str, str) and path_str:
+                    obj = _load_json(Path(path_str))
+                    if isinstance(obj, dict):
                         mdt = obj.get("markdown")
                         if isinstance(mdt, str):
                             md = mdt
-                except Exception:
-                    md = ""
                 row["markdown"] = md
             writer.writerow(row)
         return buf.getvalue()

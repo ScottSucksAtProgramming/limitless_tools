@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 import os
+
+log = logging.getLogger(__name__)
 
 
 def load_env() -> None:
@@ -11,8 +14,8 @@ def load_env() -> None:
         from dotenv import find_dotenv as _fd, load_dotenv as _ld
         load_dotenv = _ld
         find_dotenv = _fd
-    except Exception:
-        pass
+    except ImportError as exc:
+        log.debug("dotenv loaders unavailable: %s", exc)
     if find_dotenv and load_dotenv:
         env_path = find_dotenv(usecwd=True)
         if env_path:
@@ -30,7 +33,8 @@ def load_env() -> None:
                         continue
                     k, v = line.split("=", 1)
                     os.environ[k.strip()] = v.strip()
-    except Exception:
+    except OSError as exc:
+        log.debug("Failed to parse local .env (%s) fallback: %s", path, exc)
         return
 
 
@@ -40,6 +44,8 @@ def resolve_timezone(tz: str | None) -> str | None:
         return tz
     try:
         import tzlocal
+
         return tzlocal.get_localzone_name()
-    except Exception:
+    except (ImportError, OSError) as exc:
+        log.debug("Unable to resolve timezone via tzlocal: %s", exc)
         return None

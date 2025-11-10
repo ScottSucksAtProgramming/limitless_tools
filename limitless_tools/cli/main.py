@@ -166,7 +166,8 @@ def main(argv: list[str] | None = None) -> int:
                         "endTime": obj.get("endTime"),
                         "path": p,
                     })
-                except Exception:
+                except (_json.JSONDecodeError, OSError) as exc:
+                    log.debug("Skipping invalid saved lifelog %s: %s", p, exc)
                     continue
             print(_json.dumps(docs, ensure_ascii=False))
         return 0
@@ -210,13 +211,18 @@ def main(argv: list[str] | None = None) -> int:
                         "endTime": obj.get("endTime"),
                         "path": p,
                     })
-                except Exception:
+                except (_json.JSONDecodeError, OSError) as exc:
+                    log.debug("Skipping invalid saved lifelog %s: %s", p, exc)
                     continue
             # State resides at ../state/lifelogs_sync.json
             try:
                 state_path = _Path(args.data_dir).parent / "state" / "lifelogs_sync.json"
-                state = _json.loads(state_path.read_text()) if state_path.exists() else {}
-            except Exception:
+                if state_path.exists():
+                    state = _json.loads(state_path.read_text())
+                else:
+                    state = {}
+            except (_json.JSONDecodeError, OSError) as exc:
+                log.debug("Unable to read sync state %s: %s", state_path, exc)
                 state = {}
             result = {
                 "saved_count": len(saved),
