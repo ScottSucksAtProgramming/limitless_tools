@@ -41,3 +41,29 @@ def test_client_raises_informative_message_on_400():
 
     assert raised and "400" in msg and "INVALID_DATE" in msg and "invalid date" in msg
 
+
+def test_error_detail_falls_back_to_text():
+    """When JSON parsing fails, error detail should fall back to response.text."""
+    from limitless_tools.http.client import LimitlessClient
+
+    class TextResponse:
+        def __init__(self):
+            self.ok = False
+            self.status_code = 500
+            self.text = "Internal server error"
+
+        def json(self):
+            raise ValueError("not json")
+
+    class TextSession:
+        def get(self, url, headers, params):
+            return TextResponse()
+
+    client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=TextSession())
+    try:
+        client.get_lifelogs(limit=1)
+        raised = False
+    except RuntimeError as e:
+        msg = str(e)
+        raised = True
+    assert raised and "Internal server error" in msg

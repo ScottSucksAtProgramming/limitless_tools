@@ -81,3 +81,23 @@ def test_service_fetch_saves_files(tmp_path: Path, monkeypatch):
 
     saved = sorted([p.name for p in tmp_path.rglob("*.json")])
     assert saved == ["lifelog_svcA.json", "lifelog_svcB.json"]
+
+
+def test_service_fetch_param_toggles_propagate(tmp_path: Path):
+    """include_markdown/include_headings toggles should propagate to HTTP params."""
+    from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services.lifelog_service import LifelogService
+
+    class RecordingSession:
+        def __init__(self):
+            self.last_params = None
+
+        def get(self, url, headers, params):
+            self.last_params = params
+            return FakeResponse({"data": {"lifelogs": []}, "meta": {"lifelogs": {"nextCursor": None}}})
+
+    session = RecordingSession()
+    client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)
+    service = LifelogService(api_key="KEY", api_url="https://api.limitless.ai", data_dir=str(tmp_path), client=client)
+    _ = service.fetch(limit=1, include_markdown=False, include_headings=False)
+    assert session.last_params.get("includeMarkdown") == "false" and session.last_params.get("includeHeadings") == "false"

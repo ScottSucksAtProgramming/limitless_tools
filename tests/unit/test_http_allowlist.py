@@ -21,3 +21,11 @@ def test_allow_default_public_api_url():
     c = LimitlessClient(api_key="K", base_url="https://api.limitless.ai")
     assert c.base_url.endswith("api.limitless.ai")
 
+
+def test_allowlist_bypass_env_allows_unknown_host(monkeypatch):
+    """Setting LIMITLESS_ALLOW_UNSAFE_URLS should bypass allowlist for development."""
+    from limitless_tools.http.client import LimitlessClient
+
+    monkeypatch.setenv("LIMITLESS_ALLOW_UNSAFE_URLS", "1")
+    c = LimitlessClient(api_key="K", base_url="https://example.com")
+    assert c.base_url.endswith("example.com")
