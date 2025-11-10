@@ -208,8 +208,11 @@ class LifelogService:
 
         return results
 
-    def export_markdown(self, *, limit: int = 1) -> str:
-        """Return concatenated markdown from the latest N local lifelogs (by startTime)."""
+    def export_markdown(self, *, limit: int = 1, frontmatter: bool = False) -> str:
+        """Return concatenated markdown from the latest N local lifelogs (by startTime).
+
+        If frontmatter is True, prepend YAML blocks per entry similar to export_markdown_by_date.
+        """
         import json
         from pathlib import Path
 
@@ -229,7 +232,20 @@ class LifelogService:
         for e in entries:
             md = e.get("markdown")
             if isinstance(md, str) and md:
-                parts.append(md)
+                if frontmatter:
+                    fm_lines = [
+                        "---",
+                        f"id: {e.get('id')}",
+                        f"title: {e.get('title')}",
+                        f"startTime: {e.get('startTime')}",
+                        f"endTime: {e.get('endTime')}",
+                        f"isStarred: {e.get('isStarred')}",
+                        f"updatedAt: {e.get('updatedAt')}",
+                        "---",
+                    ]
+                    parts.append("\n".join(fm_lines) + "\n" + md)
+                else:
+                    parts.append(md)
 
         return "\n\n".join(parts)
 

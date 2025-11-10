@@ -264,7 +264,7 @@ def main(argv: list[str] | None = None) -> int:
             outfile.write_text(text)
             return 0
         # Legacy behavior: print N latest entries to stdout
-        text = service.export_markdown(limit=args.limit)
+        text = service.export_markdown(limit=args.limit, frontmatter=bool(getattr(args, "frontmatter", False)))
         if text:
             print(text)
         return 0
