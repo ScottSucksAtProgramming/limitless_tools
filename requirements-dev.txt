@@ -9,4 +9,4 @@ pip-audit>=2.7,<3
 bandit>=1.7,<2
 build>=1,<2
 twine>=5,<7
-pre-commit>=3.7,<4
+pre-commit>=3.7,<5
