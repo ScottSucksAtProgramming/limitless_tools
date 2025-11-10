@@ -70,3 +70,7 @@
 - `export-csv`:
   - Exports metadata columns `id,startTime,endTime,title,isStarred,updatedAt,path` with optional `--include-markdown` column.
   - Prints to stdout by default; use `--output PATH` to write to file.
+
+## Status Tracking
+- Keep `docs/TASKS.md` aligned with actual progress: move items into the “Done” or “Next Up” sections as work completes and add new sections if needed.
+- If broader repo guidance changes (e.g., new release processes or security responses), update `AGENTS.md` so the next agent inherits the current expectations.

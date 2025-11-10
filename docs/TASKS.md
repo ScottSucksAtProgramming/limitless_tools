@@ -15,9 +15,9 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Local search over index (title/markdown) + `search` CLI (regex/fuzzy)
 - CSV export with optional markdown column
 - Combined per‑date Markdown export (`export-markdown --date ... --write-dir ... --combine`)
-- Env integration in CLI: auto‑load `.env` at startup
+- Env integration in CLI: auto-load `.env` at startup
 - Structured JSON logging and log levels (`--verbose`)
-- Improved error messages for non‑retryable 4xx/5xx
+- Improved error messages for non-retryable 4xx/5xx
 - Timezone validation in CLI (IANA names) and documented behavior
 - Performance: tuned defaults; added `--batch-size`
 - User-scoped config file (TOML) with precedence: CLI flags > env > config; `--config`/`--profile`
@@ -33,12 +33,12 @@ Status: living document; update as work progresses. Use TDD for every task.
 - README badges added (CI, CodeQL, License) and Security section documented
 - Packaging metadata modernized (SPDX license + license-files) and `py.typed` included
 - Local packaging validation performed (build sdist/wheel, twine check, 3.11+ smoke install)
+- Repository published on GitHub, branch protection/secret scanning enabled, and README badges link to the public repo
 - Pre-commit configured (ruff, mypy, detect-secrets)
 - Mypy scoped to src (`mypy limitless_tools`); tests remain relaxed
 
 ## In Progress / Next Up
-- Release preparation on public GitHub (create repo, push code/history, enable branch protection & secret scanning)
-- TestPyPI dry run then PyPI publish for v0.1.0
+- Monitor CI/security (CodeQL/Dependabot alerts, pip-audit/bandit jobs) and resolve any true findings
 - Optional docs polish (architecture diagram, README badges for PyPI after publish)
 
 ## Pre‑Release Quality Gate (local)
