@@ -3,7 +3,6 @@ Timezone CLI arg is passed through to service.
 Single assert per test.
 """
 
-import json
 from pathlib import Path
 
 

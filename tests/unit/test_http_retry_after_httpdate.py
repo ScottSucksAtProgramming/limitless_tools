@@ -14,7 +14,7 @@ class RetryAfterDateSession:
     def get(self, url, headers, params):
         self.calls += 1
         if self.calls == 1:
-            dt = datetime.now(timezone.utc) + timedelta(seconds=2.5)
+            dt = datetime.now(timezone.utc) + timedelta(seconds=2.5)  # noqa: UP017
             http_date = formatdate(dt.timestamp(), usegmt=True)
             return FakeResponse({}, ok=False, status_code=429, headers={"Retry-After": http_date})
         return FakeResponse({"data": {"lifelogs": []}, "meta": {"lifelogs": {"nextCursor": None}}})
