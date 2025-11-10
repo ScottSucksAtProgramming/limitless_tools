@@ -3,7 +3,7 @@ from __future__ import annotations
 # ruff: noqa: UP006,UP035,UP037,UP045
 from typing import List, Optional
 
-from pydantic import BaseModel as PydanticBaseModel
+from pydantic import BaseModel as PydanticBaseModel, Field
 
 
 class ContentNode(PydanticBaseModel):
@@ -13,7 +13,7 @@ class ContentNode(PydanticBaseModel):
     endTime: Optional[str] = None
     startOffsetMs: Optional[int] = None
     endOffsetMs: Optional[int] = None
-    children: List['ContentNode'] = []
+    children: List['ContentNode'] = Field(default_factory=list)
     speakerName: Optional[str] = None
     speakerIdentifier: Optional[str] = None
 

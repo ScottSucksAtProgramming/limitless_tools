@@ -20,6 +20,7 @@ class LimitlessClient:
         backoff_factor: float = 0.5,
         retry_statuses: tuple[int, ...] = (429, 502, 503, 504),
         sleep_fn: Any | None = None,
+        timeout: float | None = None,
     ) -> None:
         self.api_key = api_key
         self.base_url = (base_url or os.getenv("LIMITLESS_API_URL") or "https://api.limitless.ai").rstrip("/")
@@ -28,6 +29,15 @@ class LimitlessClient:
         self.max_retries = max_retries
         self.backoff_factor = backoff_factor
         self.retry_statuses = retry_statuses
+        # Default request timeout (seconds)
+        if timeout is None:
+            try:
+                env_to = os.getenv("LIMITLESS_HTTP_TIMEOUT")
+                self.timeout = float(env_to) if env_to else 10.0
+            except Exception:
+                self.timeout = 10.0
+        else:
+            self.timeout = timeout
         # default sleep uses time.sleep, but lazily import to avoid overhead in tests
         if sleep_fn is None:
             import time as _time
@@ -36,7 +46,15 @@ class LimitlessClient:
             self.sleep_fn = sleep_fn
 
     def _headers(self) -> dict[str, str]:
-        return {"X-API-Key": self.api_key}
+        # Add a simple User-Agent with package version when available
+        ua = "limitless-tools"
+        try:
+            from importlib.metadata import version
+
+            ua = f"limitless-tools/{version('limitless-tools')}"
+        except Exception:
+            pass
+        return {"X-API-Key": self.api_key, "User-Agent": ua}
 
     def _enforce_base_url_allowlist(self) -> None:
         """Prevent accidental egress by restricting base_url host to an allowlist.
@@ -113,7 +131,19 @@ class LimitlessClient:
             # perform request with retry loop
             attempt = 0
             while True:
-                resp = self.session.get(url, headers=self._headers(), params=params)  # type: ignore[union-attr]
+                # Pass timeout only if the session.get signature accepts it (keeps tests' fakes working)
+                req_kwargs: dict[str, Any] = {}
+                try:
+                    import inspect as _inspect
+
+                    sig = _inspect.signature(self.session.get)  # type: ignore[union-attr]
+                    if "timeout" in sig.parameters or any(
+                        p.kind == p.VAR_KEYWORD for p in sig.parameters.values()
+                    ):
+                        req_kwargs["timeout"] = self.timeout
+                except Exception:
+                    pass
+                resp = self.session.get(url, headers=self._headers(), params=params, **req_kwargs)  # type: ignore[union-attr]
                 if getattr(resp, "ok", False):
                     break
                 status = getattr(resp, "status_code", None)
@@ -122,9 +152,25 @@ class LimitlessClient:
                     # Use Retry-After header if provided; otherwise exponential backoff
                     headers = getattr(resp, "headers", {}) or {}
                     ra = headers.get("Retry-After") if isinstance(headers, dict) else None
-                    try:
-                        delay = float(ra) if ra is not None else self.backoff_factor * (2 ** (attempt - 1))
-                    except Exception:
+                    delay = None
+                    if ra is not None:
+                        # Retry-After can be seconds or HTTP-date per RFC 7231
+                        try:
+                            delay = float(ra)
+                        except Exception:
+                            try:
+                                from datetime import datetime, timezone as _tz
+                                from email.utils import parsedate_to_datetime as _pdt
+
+                                dt = _pdt(str(ra))
+                                if dt is not None:
+                                    now = datetime.now(_tz.utc)  # noqa: UP017
+                                    if dt.tzinfo is None:
+                                        dt = dt.replace(tzinfo=_tz.utc)  # noqa: UP017
+                                    delay = max(0.0, (dt - now).total_seconds())
+                            except Exception:
+                                delay = None
+                    if delay is None:
                         delay = self.backoff_factor * (2 ** (attempt - 1))
                     self.sleep_fn(delay)
                     continue
