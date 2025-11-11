@@ -6,10 +6,12 @@ import os
 import sys
 from zoneinfo import ZoneInfo
 
+from pathlib import Path
+
 from limitless_tools.config.config import default_config_path, get_profile, load_config
 from limitless_tools.config.env import load_env
 from limitless_tools.config.logging import setup_logging
-from limitless_tools.config.paths import default_data_dir
+from limitless_tools.config.paths import default_data_dir, expand_path
 from limitless_tools.services.lifelog_service import LifelogService
 
 
@@ -93,6 +95,14 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _normalize_data_dir(value: str | None, *, base_dir: str | None = None) -> str:
+    """Return a data_dir resolved relative to an optional base directory."""
+    normalized = expand_path(value, base_dir=base_dir)
+    if normalized:
+        return normalized
+    return default_data_dir()
+
+
 def main(argv: list[str] | None = None) -> int:
     # Ensure .env and related environment variables are loaded before parsing
     load_env()
@@ -108,11 +118,13 @@ def main(argv: list[str] | None = None) -> int:
 
     # Load config and resolve profile
     # Allow env var overrides for config path and profile
-    config_path = args.config or os.getenv("LIMITLESS_CONFIG")
+    config_path_arg = args.config or os.getenv("LIMITLESS_CONFIG")
+    resolved_config_path = expand_path(config_path_arg) or default_config_path()
     profile_name = args.profile or os.getenv("LIMITLESS_PROFILE") or "default"
 
-    cfg = load_config(config_path)
+    cfg = load_config(resolved_config_path)
     prof = get_profile(cfg, profile_name)
+    config_base_dir = str(Path(resolved_config_path).expanduser().parent)
 
     # Precedence: CLI flags > environment variables > config > defaults
     argv_list = argv or []
@@ -121,9 +133,11 @@ def main(argv: list[str] | None = None) -> int:
         return opt in argv_list
 
     # data_dir precedence
+    data_dir_from_config = False
     if not _provided("--data-dir") and not os.getenv("LIMITLESS_DATA_DIR"):
         if isinstance(prof.get("data_dir"), str):
             setattr(args, "data_dir", prof["data_dir"])
+            data_dir_from_config = True
 
     # batch_size precedence for fetch/sync
     if not _provided("--batch-size") and isinstance(prof.get("batch_size"), (int, float)):
@@ -138,6 +152,11 @@ def main(argv: list[str] | None = None) -> int:
     # Resolve API credentials
     resolved_api_key = os.getenv("LIMITLESS_API_KEY") or (prof.get("api_key") if isinstance(prof.get("api_key"), str) else None)
     resolved_api_url = os.getenv("LIMITLESS_API_URL") or (prof.get("api_url") if isinstance(prof.get("api_url"), str) else None)
+
+    args.data_dir = _normalize_data_dir(
+        getattr(args, "data_dir", None),
+        base_dir=config_base_dir if data_dir_from_config else None,
+    )
 
     if args.command == "fetch":
         service = LifelogService(
@@ -257,7 +276,11 @@ def main(argv: list[str] | None = None) -> int:
         # Combined per-date export to a single file
         if args.combine:
             # Determine effective output directory: CLI --write-dir > config profile output_dir
-            cfg_output_dir = prof.get("output_dir") if isinstance(prof.get("output_dir"), str) else None
+            cfg_output_dir = (
+                expand_path(prof.get("output_dir"), base_dir=config_base_dir)
+                if isinstance(prof.get("output_dir"), str)
+                else None
+            )
             eff_write_dir = args.write_dir or cfg_output_dir
             if not args.date or not eff_write_dir:
                 sys.stderr.write("--combine requires --date and a write directory (provide --write-dir or set output_dir in config)\n")
@@ -283,7 +306,11 @@ def main(argv: list[str] | None = None) -> int:
         )
         csv_text = service.export_csv(date=args.date, include_markdown=bool(getattr(args, "include_markdown", False)))
         # Determine effective output file: CLI --output > config profile output_dir + default filename; else stdout
-        cfg_output_dir = prof.get("output_dir") if isinstance(prof.get("output_dir"), str) else None
+        cfg_output_dir = (
+            expand_path(prof.get("output_dir"), base_dir=config_base_dir)
+            if isinstance(prof.get("output_dir"), str)
+            else None
+        )
         eff_output = getattr(args, "output", None)
         if not eff_output and cfg_output_dir:
             import os as _os
@@ -327,7 +354,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "configure":
         # Compute target config path and profile
         from limitless_tools.config.config import load_config as _load_cfg, save_config as _save_cfg
-        target_path = config_path or default_config_path()
+        target_path = resolved_config_path
         target_profile = profile_name
         # Load existing config
         current = _load_cfg(target_path)

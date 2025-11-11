@@ -12,7 +12,7 @@ class StateRepository:
 
     @property
     def _state_path(self) -> Path:
-        lifelogs_dir = Path(self.base_lifelogs_dir)
+        lifelogs_dir = Path(self.base_lifelogs_dir).expanduser()
         return lifelogs_dir.parent / "state" / "lifelogs_sync.json"
 
     def load(self) -> dict[str, Any]:
@@ -28,4 +28,3 @@ class StateRepository:
         p = self._state_path
         p.parent.mkdir(parents=True, exist_ok=True)
         p.write_text(json.dumps(state, ensure_ascii=False, indent=2))
-

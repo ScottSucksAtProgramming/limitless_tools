@@ -52,6 +52,9 @@ limitless = "limitless_tools.cli.main:main"
 [tool.setuptools.package-data]
 limitless_tools = ["py.typed"]
 
+[tool.setuptools]
+packages = ["limitless_tools"]
+
 [project.urls]
 Homepage = "https://github.com/ScottSucksAtProgramming/limitless_tools"
 Issues = "https://github.com/ScottSucksAtProgramming/limitless_tools/issues"

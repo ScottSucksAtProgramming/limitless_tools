@@ -7,7 +7,7 @@ from typing import Any
 
 class JsonFileRepository:
     def __init__(self, base_dir: str) -> None:
-        self.base_dir = Path(base_dir)
+        self.base_dir = Path(base_dir).expanduser()
 
     def path_for_lifelog(self, lifelog: dict[str, Any]) -> str:
         start_time = lifelog.get("startTime", "0000-00-00T00:00:00Z")
@@ -21,4 +21,3 @@ class JsonFileRepository:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(lifelog, ensure_ascii=False, indent=2))
         return str(path)
-
