@@ -4,9 +4,8 @@ import argparse
 import logging
 import os
 import sys
-from zoneinfo import ZoneInfo
-
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from limitless_tools.config.config import default_config_path, get_profile, load_config
 from limitless_tools.config.env import load_env
