@@ -94,6 +94,14 @@ Notes: You can define multiple profiles (e.g., `[default]`, `[work]`) and select
 - `limitless export-markdown --limit 5` / `--date YYYY-MM-DD --combine` — print or write markdown exports.
 - `limitless export-csv --date 2025-11-01 --output /tmp/lifelogs.csv` — dump metadata (add `--include-markdown` to include body content).
 
+## Error handling & exit codes
+
+- Network failures (including timeouts) are retried when safe and surface as concise `ApiError` messages (`HTTP 429` with Retry-After hints, or `Request timed out …`).
+- Local persistence issues (e.g., unwritable data dir) become `StorageError`/`StateError` with the offending path in the context.
+- The CLI wraps those exceptions in friendly stderr output so you see a single `Error: …` line instead of a Python traceback; pass `-v/--verbose` to capture the stack trace in logs if needed.
+- Exit codes: `0` success, `1` operational/service errors, `2` validation/config problems (e.g., invalid timezone, missing `--date` when using `--combine`), `130` for `Ctrl+C` aborts.
+- Errors also drive JSON logging via `--verbose`, so CI logs include structured context without leaking secrets.
+
 ## Documentation
 
 - Usage guide: docs/USAGE.md

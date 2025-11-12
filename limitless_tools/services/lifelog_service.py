@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from limitless_tools.config.env import resolve_timezone
+from limitless_tools.errors import LimitlessError, ServiceError
 from limitless_tools.http.client import LimitlessClient
 from limitless_tools.storage.json_repo import JsonFileRepository
 from limitless_tools.storage.state_repo import StateRepository
@@ -75,24 +76,44 @@ class LifelogService:
         )
         repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")
 
-        lifelogs = client.get_lifelogs(
-            limit=limit,
-            direction=direction,
-            include_markdown=include_markdown,
-            include_headings=include_headings,
-            date=date,
-            start=start,
-            end=end,
-            timezone=timezone,
-            is_starred=is_starred,
-            batch_size=batch_size,
-            progress_callback=progress_callback,
-        )
+        try:
+            lifelogs = client.get_lifelogs(
+                limit=limit,
+                direction=direction,
+                include_markdown=include_markdown,
+                include_headings=include_headings,
+                date=date,
+                start=start,
+                end=end,
+                timezone=timezone,
+                is_starred=is_starred,
+                batch_size=batch_size,
+                progress_callback=progress_callback,
+            )
+        except LimitlessError as exc:
+            raise ServiceError(f"Failed to fetch lifelogs: {exc}", cause=exc, context={"operation": "fetch"}) from exc
+        except Exception as exc:  # pragma: no cover - best-effort guard
+            raise ServiceError("Unexpected error while fetching lifelogs.", cause=exc, context={"operation": "fetch"}) from exc
 
         report = SaveReport()
         saved_paths: list[str] = []
         for item in lifelogs:
-            save_result = repo.save_lifelog(item)
+            try:
+                save_result = repo.save_lifelog(item)
+            except LimitlessError as exc:
+                lifelog_id = item.get("id")
+                raise ServiceError(
+                    f"Failed to save lifelog {lifelog_id}: {exc}",
+                    cause=exc,
+                    context={"operation": "fetch", "lifelog_id": lifelog_id},
+                ) from exc
+            except Exception as exc:  # pragma: no cover - best-effort guard
+                lifelog_id = item.get("id")
+                raise ServiceError(
+                    f"Unexpected failure while saving lifelog {lifelog_id}.",
+                    cause=exc,
+                    context={"operation": "fetch", "lifelog_id": lifelog_id},
+                ) from exc
             saved_paths.append(save_result.path)
             report.record(save_result.status)
 
@@ -119,7 +140,12 @@ class LifelogService:
         state_repo = StateRepository(base_lifelogs_dir=self.data_dir or "")
 
         # Load previous state and derive default start if none provided
-        st = state_repo.load()
+        try:
+            st = state_repo.load()
+        except LimitlessError as exc:
+            raise ServiceError("Failed to load sync state.", cause=exc, context={"operation": "sync"}) from exc
+        except Exception as exc:  # pragma: no cover - best-effort guard
+            raise ServiceError("Unexpected error loading sync state.", cause=exc, context={"operation": "sync"}) from exc
         # Compute a signature for the current sync parameters
         sig_dict = {
             "date": date,
@@ -136,26 +162,44 @@ class LifelogService:
         eff_start = start or sig_state.get("lastEndTime") or st.get("lastEndTime")
 
         eff_tz = resolve_timezone(timezone)
-        lifelogs = client.get_lifelogs(
-            limit=None,
-            direction="desc",
-            include_markdown=True,
-            include_headings=True,
-            date=date,
-            start=eff_start,
-            end=end,
-            timezone=eff_tz,
-            is_starred=is_starred,
-            batch_size=batch_size,
-            cursor=(sig_state.get("lastCursor") or st.get("lastCursor")) if not any([date, start, end]) else None,
-            progress_callback=progress_callback,
-        )
+        try:
+            lifelogs = client.get_lifelogs(
+                limit=None,
+                direction="desc",
+                include_markdown=True,
+                include_headings=True,
+                date=date,
+                start=eff_start,
+                end=end,
+                timezone=eff_tz,
+                is_starred=is_starred,
+                batch_size=batch_size,
+                cursor=(sig_state.get("lastCursor") or st.get("lastCursor")) if not any([date, start, end]) else None,
+                progress_callback=progress_callback,
+            )
+        except LimitlessError as exc:
+            raise ServiceError(f"Failed to sync lifelogs: {exc}", cause=exc, context={"operation": "sync"}) from exc
+        except Exception as exc:  # pragma: no cover - best-effort guard
+            raise ServiceError("Unexpected error while syncing lifelogs.", cause=exc, context={"operation": "sync"}) from exc
 
         report = SaveReport()
         saved_paths: list[str] = []
         index_rows: list[dict[str, str | bool | None]] = []
         for ll in lifelogs:
-            save_result = repo.save_lifelog(ll)
+            try:
+                save_result = repo.save_lifelog(ll)
+            except LimitlessError as exc:
+                raise ServiceError(
+                    f"Failed to save lifelog {ll.get('id')}: {exc}",
+                    cause=exc,
+                    context={"operation": "sync", "lifelog_id": ll.get("id")},
+                ) from exc
+            except Exception as exc:  # pragma: no cover - best-effort guard
+                raise ServiceError(
+                    f"Unexpected failure while saving lifelog {ll.get('id')}.",
+                    cause=exc,
+                    context={"operation": "sync", "lifelog_id": ll.get("id")},
+                ) from exc
             saved_paths.append(save_result.path)
             report.record(save_result.status)
             index_rows.append(
@@ -203,7 +247,12 @@ class LifelogService:
             signatures.setdefault(sig, {})["lastCursor"] = client.last_next_cursor
         if signatures:
             st["signatures"] = signatures
-        state_repo.save(st)
+        try:
+            state_repo.save(st)
+        except LimitlessError as exc:
+            raise ServiceError("Failed to persist sync state.", cause=exc, context={"operation": "sync"}) from exc
+        except Exception as exc:  # pragma: no cover - best-effort guard
+            raise ServiceError("Unexpected error while saving sync state.", cause=exc, context={"operation": "sync"}) from exc
 
         self.last_report = report
         return saved_paths

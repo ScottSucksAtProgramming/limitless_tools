@@ -1,7 +1,11 @@
 """
-Improve error messages for non-retryable HTTP errors.
+Improve error handling ergonomics for HTTP failures and network timeouts.
 Single assert per test to keep failures crisp.
 """
+
+import pytest
+
+from limitless_tools.errors import ApiError
 
 
 class FakeResponse:
@@ -27,19 +31,15 @@ class ErrorSession:
 def test_client_raises_informative_message_on_400():
     from limitless_tools.http.client import LimitlessClient
 
-    # Simulate an error payload the API might return
     payload = {"error": {"code": "INVALID_DATE", "message": "Bad request: invalid date"}}
     session = ErrorSession(400, payload)
     client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)
 
-    try:
+    with pytest.raises(ApiError) as excinfo:
         client.get_lifelogs(limit=1)
-        raised = False
-    except RuntimeError as e:
-        msg = str(e)
-        raised = True
 
-    assert raised and "400" in msg and "INVALID_DATE" in msg and "invalid date" in msg
+    msg = str(excinfo.value)
+    assert excinfo.value.status_code == 400 and "INVALID_DATE" in msg and "invalid date" in msg
 
 
 def test_error_detail_falls_back_to_text():
@@ -60,10 +60,24 @@ def test_error_detail_falls_back_to_text():
             return TextResponse()
 
     client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=TextSession())
-    try:
+
+    with pytest.raises(ApiError) as excinfo:
         client.get_lifelogs(limit=1)
-        raised = False
-    except RuntimeError as e:
-        msg = str(e)
-        raised = True
-    assert raised and "Internal server error" in msg
+
+    assert excinfo.value.status_code == 500 and "Internal server error" in str(excinfo.value)
+
+
+def test_timeout_is_wrapped_in_api_error():
+    from limitless_tools.http.client import LimitlessClient
+
+    class RaisingSession:
+        def get(self, url, headers, params):  # noqa: ARG002 - signature required
+            raise TimeoutError("simulated timeout")
+
+    client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=RaisingSession())
+
+    with pytest.raises(ApiError) as excinfo:
+        client.get_lifelogs(limit=1)
+
+    msg = str(excinfo.value).lower()
+    assert "timeout" in msg or "timed out" in msg

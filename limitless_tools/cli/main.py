@@ -13,6 +13,7 @@ from limitless_tools.config.config import default_config_path, get_profile, load
 from limitless_tools.config.env import load_env
 from limitless_tools.config.logging import setup_logging
 from limitless_tools.config.paths import default_data_dir, expand_path
+from limitless_tools.errors import LimitlessError, ValidationError
 from limitless_tools.services.lifelog_service import LifelogService, SaveReport
 
 
@@ -159,47 +160,33 @@ def _normalize_data_dir(value: str | None, *, base_dir: str | None = None) -> st
     return default_data_dir()
 
 
-def main(argv: list[str] | None = None) -> int:
-    # Ensure .env and related environment variables are loaded before parsing
-    load_env()
-    parser = _build_parser()
-    args = parser.parse_args(args=argv)
-    setup_logging(verbose=bool(getattr(args, "verbose", False)))
+def _coerce_timeout_value(value: object, log: logging.Logger) -> float | None:
+    if isinstance(value, (int, float)):
+        return float(value)
+    if isinstance(value, str):
+        stripped = value.strip()
+        if not stripped:
+            return None
+        try:
+            return float(stripped)
+        except ValueError:
+            log.debug("Invalid http_timeout config value: %s", value)
+    return None
 
-    log = logging.getLogger("limitless_tools.cli")
-    log.info("cli_start", extra={"event": "cli_start", "command": args.command})
-    if getattr(args, "verbose", False):
-        # Emit a debug message for tests/diagnostics (avoid reserved LogRecord keys)
-        log.debug("parsed_args", extra={"cli_args": vars(args)})
 
-    # Load config and resolve profile
-    # Allow env var overrides for config path and profile
-    config_path_arg = args.config or os.getenv("LIMITLESS_CONFIG")
-    resolved_config_path = expand_path(config_path_arg) or default_config_path()
-    profile_name = args.profile or os.getenv("LIMITLESS_PROFILE") or "default"
-
-    cfg = load_config(resolved_config_path)
-    prof = get_profile(cfg, profile_name)
-    config_base_dir = str(Path(resolved_config_path).expanduser().parent)
-
-    # Precedence: CLI flags > environment variables > config > defaults
-    argv_list = argv or []
-
+def _execute_command(
+    *,
+    args: argparse.Namespace,
+    argv_list: list[str],
+    prof: dict,
+    config_base_dir: str,
+    parser: argparse.ArgumentParser,
+    log: logging.Logger,
+    resolved_config_path: str,
+    profile_name: str,
+) -> int:
     def _provided(opt: str) -> bool:
         return opt in argv_list
-
-    def _coerce_timeout_value(value: object) -> float | None:
-        if isinstance(value, (int, float)):
-            return float(value)
-        if isinstance(value, str):
-            stripped = value.strip()
-            if not stripped:
-                return None
-            try:
-                return float(stripped)
-            except ValueError:
-                log.debug("Invalid http_timeout config value: %s", value)
-        return None
 
     # data_dir precedence
     data_dir_from_config = False
@@ -223,7 +210,7 @@ def main(argv: list[str] | None = None) -> int:
     resolved_api_url = os.getenv("LIMITLESS_API_URL") or (prof.get("api_url") if isinstance(prof.get("api_url"), str) else None)
     resolved_http_timeout: float | None = None
     if not os.getenv("LIMITLESS_HTTP_TIMEOUT"):
-        resolved_http_timeout = _coerce_timeout_value(prof.get("http_timeout"))
+        resolved_http_timeout = _coerce_timeout_value(prof.get("http_timeout"), log)
 
     args.data_dir = _normalize_data_dir(
         getattr(args, "data_dir", None),
@@ -273,11 +260,12 @@ def main(argv: list[str] | None = None) -> int:
         if args.timezone:
             try:
                 _ = ZoneInfo(args.timezone)
-            except Exception:
-                sys.stderr.write(
-                    f"Invalid timezone: {args.timezone}. Use an IANA name like 'America/Los_Angeles' or 'UTC'.\n"
-                )
-                return 2
+            except Exception as exc:
+                raise ValidationError(
+                    f"Invalid timezone: {args.timezone}. Use an IANA name like 'America/Los_Angeles' or 'UTC'.",
+                    cause=exc,
+                    context={"timezone": args.timezone},
+                ) from exc
         service = LifelogService(
             api_key=resolved_api_key,
             api_url=resolved_api_url,
@@ -367,8 +355,10 @@ def main(argv: list[str] | None = None) -> int:
             )
             eff_write_dir = args.write_dir or cfg_output_dir
             if not args.date or not eff_write_dir:
-                sys.stderr.write("--combine requires --date and a write directory (provide --write-dir or set output_dir in config)\n")
-                return 2
+                raise ValidationError(
+                    "--combine requires --date and a write directory (provide --write-dir or set output_dir in config)",
+                    context={"command": "export-markdown"},
+                )
             text = service.export_markdown_by_date(date=args.date, frontmatter=args.frontmatter)
             from pathlib import Path as _Path
             outdir = _Path(eff_write_dir)
@@ -462,6 +452,63 @@ def main(argv: list[str] | None = None) -> int:
 
     parser.print_help()
     return 2
+
+
+def main(argv: list[str] | None = None) -> int:
+    # Ensure .env and related environment variables are loaded before parsing
+    load_env()
+    parser = _build_parser()
+    args = parser.parse_args(args=argv)
+    setup_logging(verbose=bool(getattr(args, "verbose", False)))
+
+    log = logging.getLogger("limitless_tools.cli")
+    log.info("cli_start", extra={"event": "cli_start", "command": args.command})
+    if getattr(args, "verbose", False):
+        # Emit a debug message for tests/diagnostics (avoid reserved LogRecord keys)
+        log.debug("parsed_args", extra={"cli_args": vars(args)})
+
+    # Load config and resolve profile
+    # Allow env var overrides for config path and profile
+    config_path_arg = args.config or os.getenv("LIMITLESS_CONFIG")
+    resolved_config_path = expand_path(config_path_arg) or default_config_path()
+    profile_name = args.profile or os.getenv("LIMITLESS_PROFILE") or "default"
+
+    cfg = load_config(resolved_config_path)
+    prof = get_profile(cfg, profile_name)
+    config_base_dir = str(Path(resolved_config_path).expanduser().parent)
+
+    argv_list = argv or []
+    verbose = bool(getattr(args, "verbose", False))
+
+    try:
+        return _execute_command(
+            args=args,
+            argv_list=argv_list,
+            prof=prof,
+            config_base_dir=config_base_dir,
+            parser=parser,
+            log=log,
+            resolved_config_path=resolved_config_path,
+            profile_name=profile_name,
+        )
+    except ValidationError as exc:
+        _stderr_line(f"Error: {exc}")
+        return 2
+    except LimitlessError as exc:
+        log_args = {"context": getattr(exc, "context", {})}
+        if verbose:
+            log.exception("limitless_error", extra=log_args)
+        else:
+            log.error("limitless_error", extra={**log_args, "error": str(exc)})
+        _stderr_line(f"Error: {exc}")
+        return 1
+    except KeyboardInterrupt:
+        _stderr_line("Aborted by user.")
+        return 130
+    except Exception:  # pragma: no cover - final safeguard
+        log.exception("unhandled_exception")
+        _stderr_line("Unexpected error occurred. Re-run with --verbose for stack trace.")
+        return 1
 
 
 if __name__ == "__main__":  # pragma: no cover

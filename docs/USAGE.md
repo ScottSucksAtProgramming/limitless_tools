@@ -115,6 +115,13 @@ python -m limitless_tools.cli.main search --query "Weekly Meeting" --fuzzy --fuz
 
 Regex searches accept `--regex` or the short form `-rg` and are case-insensitive; fuzzy search uses `rapidfuzz` when available (falls back to `difflib`) with `--fuzzy-threshold` defaulting to `80`.
 
+### Error handling & exit codes
+
+- The HTTP client retries `429/502/503/504` responses (respecting `Retry-After`) and wraps network failures/timeouts in `ApiError` so the CLI can surface a concise message such as `Error: Request timed out while fetching lifelogs.`
+- Storage/state operations raise `StorageError`/`StateError` with the problematic path in their context; services rewrap them as `ServiceError` for consistent CLI UX.
+- Exit codes: `0` success, `1` operational/service errors (HTTP/network/storage), `2` validation/config issues (e.g., invalid timezone, missing `--date` when using `--combine`), `130` when the user interrupts with `Ctrl+C`.
+- The CLI prints only a single `Error: …` line to stderr; pass `-v/--verbose` (or set `LIMITLESS_DEBUG=1`) to include full stack traces in the structured logs while keeping stdout clean for JSON piping.
+
 ### Configuration file (MVP)
 
 You can store defaults in a user config TOML and select profiles via `--profile`:

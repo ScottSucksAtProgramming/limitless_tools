@@ -17,7 +17,7 @@ Status: living document; update as work progresses. Use TDD for every task.
 - Combined per‑date Markdown export (`export-markdown --date ... --write-dir ... --combine`)
 - Env integration in CLI: auto-load `.env` at startup
 - Structured JSON logging and log levels (`--verbose`)
-- Improved error messages for non-retryable 4xx/5xx
+- Centralized error handling: exception hierarchy, timeout-aware HTTP errors, and CLI exit codes with friendly stderr output
 - Timezone validation in CLI (IANA names) and documented behavior
 - Performance: tuned defaults; added `--batch-size`
 - User-scoped config file (TOML) with precedence: CLI flags > env > config; `--config`/`--profile`

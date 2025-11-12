@@ -5,6 +5,8 @@ import os
 from collections.abc import Callable
 from typing import Any
 
+from limitless_tools.errors import ApiError, ConfigurationError
+
 try:
     import requests
 except ImportError:  # pragma: no cover - requests should be present in dev
@@ -82,7 +84,7 @@ class LimitlessClient:
         extra_hosts = {h.strip() for h in extra.split(",") if h.strip()}
         allowed = default_allowed | extra_hosts
         if host not in allowed:
-            raise ValueError(f"Base URL host not allowed: {host}")
+            raise ConfigurationError(f"Base URL host not allowed: {host}")
 
     def get_lifelogs(
         self,
@@ -152,7 +154,28 @@ class LimitlessClient:
                         req_kwargs["timeout"] = self.timeout
                 except (AttributeError, ValueError, TypeError) as exc:
                     log.debug("Session.get signature missing timeout: %s", exc)
-                resp = self.session.get(url, headers=self._headers(), params=params, **req_kwargs)  # type: ignore[union-attr]
+                try:
+                    resp = self.session.get(  # type: ignore[union-attr]
+                        url,
+                        headers=self._headers(),
+                        params=params,
+                        **req_kwargs,
+                    )
+                except Exception as exc:
+                    if attempt < self.max_retries:
+                        attempt += 1
+                        delay = self.backoff_factor * (2 ** (attempt - 1))
+                        self.sleep_fn(delay)
+                        continue
+                    msg = self._network_error_message(exc)
+                    raise ApiError(
+                        msg,
+                        cause=exc,
+                        context={
+                            "url": url,
+                            "params": {k: params.get(k) for k in ("cursor", "limit", "date") if params.get(k)},
+                        },
+                    ) from exc
                 if getattr(resp, "ok", False):
                     break
                 status = getattr(resp, "status_code", None)
@@ -185,7 +208,11 @@ class LimitlessClient:
                     continue
                 # Build informative error message for non-retryable errors
                 detail = self._error_detail(resp)
-                raise RuntimeError(f"HTTP {status} error fetching lifelogs: {detail}")
+                raise ApiError(
+                    f"HTTP {status} error fetching lifelogs: {detail}",
+                    status_code=status,
+                    context={"url": url, "params": {"cursor": params.get("cursor")}},
+                )
 
             body = resp.json()
             page_items: list[dict[str, Any]] = body.get("data", {}).get("lifelogs", []) or []
@@ -236,3 +263,18 @@ class LimitlessClient:
         if isinstance(text, str) and text.strip():
             return text.strip()
         return "Unknown error"
+
+    def _network_error_message(self, exc: Exception) -> str:
+        text = str(exc).strip().lower()
+        if self._looks_like_timeout(exc, text):
+            return "Request timed out while fetching lifelogs."
+        return "Network error while fetching lifelogs."
+
+    @staticmethod
+    def _looks_like_timeout(exc: Exception, text: str) -> bool:
+        if isinstance(exc, TimeoutError):  # noqa: F821 - built-in in >=3.10
+            return True
+        if "timeout" in text:
+            return True
+        timeout_cls = getattr(requests, "Timeout", None) if requests is not None else None
+        return timeout_cls is not None and isinstance(exc, timeout_cls)

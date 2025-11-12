@@ -5,12 +5,14 @@ Single assert per test.
 
 import pytest
 
+from limitless_tools.errors import ConfigurationError
+
 
 def test_disallow_unknown_base_url(monkeypatch):
     """Client should reject non-allowlisted base URLs by default."""
     from limitless_tools.http.client import LimitlessClient
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ConfigurationError):
         _ = LimitlessClient(api_key="K", base_url="https://example.com")
 
 
