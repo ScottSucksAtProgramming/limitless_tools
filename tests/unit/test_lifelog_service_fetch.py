@@ -101,3 +101,30 @@ def test_service_fetch_param_toggles_propagate(tmp_path: Path):
     service = LifelogService(api_key="KEY", api_url="https://api.limitless.ai", data_dir=str(tmp_path), client=client)
     _ = service.fetch(limit=1, include_markdown=False, include_headings=False)
     assert session.last_params.get("includeMarkdown") == "false" and session.last_params.get("includeHeadings") == "false"
+
+
+def test_service_passes_http_timeout_to_client(monkeypatch, tmp_path: Path):
+    """Services constructed with http_timeout should pass it into LimitlessClient."""
+    from limitless_tools.services import lifelog_service as svc_module
+
+    captured = {"timeout": None}
+
+    class FakeClient:
+        def __init__(self, *_, **kwargs):
+            captured["timeout"] = kwargs.get("timeout")
+
+        def get_lifelogs(self, **_kwargs):
+            return []
+
+    monkeypatch.setattr(svc_module, "LimitlessClient", FakeClient)
+
+    service = svc_module.LifelogService(
+        api_key="KEY",
+        api_url="https://api.limitless.ai",
+        data_dir=str(tmp_path),
+        http_timeout=22.0,
+    )
+
+    _ = service.fetch(limit=1)
+
+    assert abs(float(captured["timeout"]) - 22.0) < 1e-6

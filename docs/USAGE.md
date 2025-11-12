@@ -77,7 +77,7 @@ mypy limitless_tools
 
 ## CLI commands
 
-All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`). Use `-v/--verbose` to emit structured JSON debug logs to stderr for troubleshooting.
+All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`). HTTP requests use a 30-second timeout by default; override with `LIMITLESS_HTTP_TIMEOUT` or the `http_timeout` config key. Use `-v/--verbose` to emit structured JSON debug logs to stderr for troubleshooting.
 
 - Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings. Use `--json` to print a JSON array of saved item summaries to stdout.
 
@@ -132,6 +132,7 @@ api_key = "YOUR_API_KEY"
 data_dir = "/path/to/lifelogs"
 timezone = "UTC"
 batch_size = 50
+http_timeout = 45
 output_dir = "/path/to/exports"  # default directory for file outputs (e.g., export-markdown --combine, export-csv)
 
 [work]
@@ -139,6 +140,7 @@ api_key = "WORK_API_KEY"
 data_dir = "/work/data/lifelogs"
 timezone = "America/Los_Angeles"
 batch_size = 100
+http_timeout = 60
 ```
 
 Use a profile:
@@ -151,7 +153,7 @@ python -m limitless_tools.cli.main --profile work fetch --limit 5
 | --- | --- |
 | CLI flags | Highest precedence (e.g., `--data-dir`, `--profile`, `--output`, `--write-dir`). |
 | Environment variables | `LIMITLESS_API_KEY`, `LIMITLESS_DATA_DIR`, `LIMITLESS_TZ`, etc. |
-| Config file profile | Per-profile defaults such as `data_dir`, `timezone`, `batch_size`, `output_dir`. |
+| Config file profile | Per-profile defaults such as `data_dir`, `timezone`, `batch_size`, `http_timeout`, `output_dir`. |
 | Built-in defaults | Provided by the CLI (`batch_size=50`, `direction=desc`, default data paths). |
 
 ## Configure via CLI

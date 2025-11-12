@@ -29,6 +29,7 @@ class LifelogService:
     data_dir: str | None
     client: LimitlessClient | None = None
     repo: JsonFileRepository | None = None
+    http_timeout: float | None = None
 
     def fetch(
         self,
@@ -46,7 +47,11 @@ class LifelogService:
     ) -> list[str]:
         """Fetch lifelogs from API and save them to JSON files. Returns saved file paths."""
 
-        client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
+        client = self.client or LimitlessClient(
+            api_key=self.api_key or "",
+            base_url=self.api_url or None,
+            timeout=self.http_timeout,
+        )
         repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")
 
         lifelogs = client.get_lifelogs(
@@ -78,7 +83,11 @@ class LifelogService:
         is_starred: bool | None = None,
         batch_size: int = 50,
     ) -> list[str]:
-        client = self.client or LimitlessClient(api_key=self.api_key or "", base_url=self.api_url or None)
+        client = self.client or LimitlessClient(
+            api_key=self.api_key or "",
+            base_url=self.api_url or None,
+            timeout=self.http_timeout,
+        )
         repo = self.repo or JsonFileRepository(base_dir=self.data_dir or "")
         state_repo = StateRepository(base_lifelogs_dir=self.data_dir or "")
 

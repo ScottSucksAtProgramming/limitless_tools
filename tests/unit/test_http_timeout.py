@@ -39,7 +39,7 @@ def test_timeout_default_applied(monkeypatch):
     s = TimeoutSession()
     c = LimitlessClient(api_key="K", base_url="https://api.limitless.ai", session=s)
     _ = c.get_lifelogs(limit=1)
-    assert abs(float(s.last_timeout) - 10.0) < 1e-6
+    assert abs(float(s.last_timeout) - 30.0) < 1e-6
 
 
 def test_timeout_env_override(monkeypatch):
@@ -59,4 +59,3 @@ def test_no_timeout_param_signature_does_not_break():
     c = LimitlessClient(api_key="K", base_url="https://api.limitless.ai", session=s)
     _ = c.get_lifelogs(limit=1)
     assert s.calls == 1
-

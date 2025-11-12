@@ -36,10 +36,10 @@ class LimitlessClient:
         if timeout is None:
             env_to = os.getenv("LIMITLESS_HTTP_TIMEOUT")
             try:
-                self.timeout = float(env_to) if env_to else 10.0
+                self.timeout = float(env_to) if env_to else 30.0
             except (ValueError, TypeError) as exc:
                 log.debug("Invalid LIMITLESS_HTTP_TIMEOUT (%s): %s", env_to, exc)
-                self.timeout = 10.0
+                self.timeout = 30.0
         else:
             self.timeout = timeout
         # default sleep uses time.sleep, but lazily import to avoid overhead in tests

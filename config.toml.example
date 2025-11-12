@@ -18,6 +18,9 @@ timezone = "UTC"
 # Default page size for API fetches
 batch_size = 50
 
+# Default HTTP timeout (seconds). Leave unset to use CLI default (30s).
+http_timeout = 45
+
 # Default output directory for commands that write files when a CLI path
 # is not provided. Used by:
 # - export-markdown --combine (if --write-dir omitted)
@@ -31,5 +34,5 @@ api_key = "WORK_API_KEY"
 data_dir = "~/work/data/lifelogs"
 timezone = "America/Los_Angeles"
 batch_size = 100
+http_timeout = 60
 output_dir = "~/work/exports"
-

@@ -89,6 +89,7 @@ def _build_parser() -> argparse.ArgumentParser:
     cfgp.add_argument("--data-dir", type=str)
     cfgp.add_argument("--timezone", type=str)
     cfgp.add_argument("--batch-size", type=int)
+    cfgp.add_argument("--http-timeout", type=float)
     cfgp.add_argument("--output-dir", type=str)
 
     return parser
@@ -131,6 +132,19 @@ def main(argv: list[str] | None = None) -> int:
     def _provided(opt: str) -> bool:
         return opt in argv_list
 
+    def _coerce_timeout_value(value: object) -> float | None:
+        if isinstance(value, (int, float)):
+            return float(value)
+        if isinstance(value, str):
+            stripped = value.strip()
+            if not stripped:
+                return None
+            try:
+                return float(stripped)
+            except ValueError:
+                log.debug("Invalid http_timeout config value: %s", value)
+        return None
+
     # data_dir precedence
     data_dir_from_config = False
     if not _provided("--data-dir") and not os.getenv("LIMITLESS_DATA_DIR"):
@@ -151,6 +165,9 @@ def main(argv: list[str] | None = None) -> int:
     # Resolve API credentials
     resolved_api_key = os.getenv("LIMITLESS_API_KEY") or (prof.get("api_key") if isinstance(prof.get("api_key"), str) else None)
     resolved_api_url = os.getenv("LIMITLESS_API_URL") or (prof.get("api_url") if isinstance(prof.get("api_url"), str) else None)
+    resolved_http_timeout: float | None = None
+    if not os.getenv("LIMITLESS_HTTP_TIMEOUT"):
+        resolved_http_timeout = _coerce_timeout_value(prof.get("http_timeout"))
 
     args.data_dir = _normalize_data_dir(
         getattr(args, "data_dir", None),
@@ -162,6 +179,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         saved = service.fetch(
             limit=args.limit,
@@ -204,6 +222,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         saved = service.sync(
             date=args.date,
@@ -256,6 +275,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         items = service.list_local(date=args.date, is_starred=True if args.starred_only else None)
         if args.as_json:
@@ -271,6 +291,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         # Combined per-date export to a single file
         if args.combine:
@@ -302,6 +323,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         csv_text = service.export_csv(date=args.date, include_markdown=bool(getattr(args, "include_markdown", False)))
         # Determine effective output file: CLI --output > config profile output_dir + default filename; else stdout
@@ -329,6 +351,7 @@ def main(argv: list[str] | None = None) -> int:
             api_key=resolved_api_key,
             api_url=resolved_api_url,
             data_dir=args.data_dir,
+            http_timeout=resolved_http_timeout,
         )
         items = service.search_local(
             query=args.query,
@@ -360,7 +383,7 @@ def main(argv: list[str] | None = None) -> int:
         prof_dict = current.get(target_profile, {}) if current else {}
         # Apply updates from flags (ignore None values)
         updates = {}
-        for k in ["api_key", "api_url", "data_dir", "timezone", "batch_size", "output_dir"]:
+        for k in ["api_key", "api_url", "data_dir", "timezone", "batch_size", "http_timeout", "output_dir"]:
             v = getattr(args, k, None)
             if v is not None:
                 updates[k] = v

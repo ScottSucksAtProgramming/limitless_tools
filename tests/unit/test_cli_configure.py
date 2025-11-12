@@ -25,9 +25,17 @@ def test_configure_writes_profile_with_values(monkeypatch, tmp_path: Path):
         "UTC",
         "--batch-size",
         "77",
+        "--http-timeout",
+        "55.5",
     ])
 
-    assert code == 0 and cfg.exists() and "[work]" in cfg.read_text() and "batch_size = 77" in cfg.read_text()
+    assert (
+        code == 0
+        and cfg.exists()
+        and "[work]" in cfg.read_text()
+        and "batch_size = 77" in cfg.read_text()
+        and "http_timeout = 55.5" in cfg.read_text()
+    )
 
 
 def test_configure_merges_existing_profile(monkeypatch, tmp_path: Path):
@@ -50,4 +58,3 @@ batch_size = 50
 
     merged = load_config(str(cfg))
     assert code == 0 and merged["default"]["batch_size"] == 50 and str(merged["default"]["data_dir"]).endswith("dir2")
-

@@ -127,3 +127,69 @@ def test_cli_env_overrides_config_for_data_dir(monkeypatch, tmp_path: Path):
 
     code = cli_main.main(["--config", str(cfg), "fetch", "--limit", "1"])
     assert code == 0 and called["init_kwargs"]["data_dir"].endswith("from_env")
+
+
+def test_cli_uses_http_timeout_from_config_when_env_missing(monkeypatch, tmp_path: Path):
+    """http_timeout from config should be passed to the service when env is unset."""
+    from limitless_tools.cli import main as cli_main
+
+    cfg = tmp_path / "config.toml"
+    _write_config(
+        cfg,
+        """
+        [default]
+        api_key = "KEY"
+        http_timeout = 45.5
+        """.strip(),
+    )
+
+    called = {"init_kwargs": None}
+
+    class FakeService:
+        def __init__(self, *_, **kwargs):
+            called["init_kwargs"] = kwargs
+
+        def fetch(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(cli_main, "LifelogService", FakeService)
+    monkeypatch.setattr(cli_main, "load_env", lambda: None)
+    monkeypatch.delenv("LIMITLESS_DATA_DIR", raising=False)
+    monkeypatch.delenv("LIMITLESS_HTTP_TIMEOUT", raising=False)
+
+    code = cli_main.main(["--config", str(cfg), "fetch", "--limit", "1"])
+
+    assert code == 0 and abs(float(called["init_kwargs"]["http_timeout"]) - 45.5) < 1e-6
+
+
+def test_cli_prefers_http_timeout_env_over_config(monkeypatch, tmp_path: Path):
+    """LIMITLESS_HTTP_TIMEOUT should take precedence over config http_timeout."""
+    from limitless_tools.cli import main as cli_main
+
+    cfg = tmp_path / "config.toml"
+    _write_config(
+        cfg,
+        """
+        [default]
+        api_key = "KEY"
+        http_timeout = 12
+        """.strip(),
+    )
+
+    called = {"init_kwargs": None}
+
+    class FakeService:
+        def __init__(self, *_, **kwargs):
+            called["init_kwargs"] = kwargs
+
+        def fetch(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(cli_main, "LifelogService", FakeService)
+    monkeypatch.setattr(cli_main, "load_env", lambda: None)
+    monkeypatch.delenv("LIMITLESS_DATA_DIR", raising=False)
+    monkeypatch.setenv("LIMITLESS_HTTP_TIMEOUT", "99")
+
+    code = cli_main.main(["--config", str(cfg), "fetch", "--limit", "1"])
+
+    assert code == 0 and called["init_kwargs"]["http_timeout"] is None
