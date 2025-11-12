@@ -15,6 +15,7 @@ venv/
 
 # Local config
 .env
+AGENTS.md
 
 # Data (user can change location)
 data/
