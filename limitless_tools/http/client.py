@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections.abc import Callable
 from typing import Any
 
 try:
@@ -97,6 +98,7 @@ class LimitlessClient:
         is_starred: bool | None = None,
         batch_size: int = 50,
         cursor: str | None = None,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> list[dict[str, Any]]:
         """
         Fetch lifelogs with automatic pagination. Returns a list of lifelog dicts.
@@ -112,7 +114,9 @@ class LimitlessClient:
         current_cursor: str | None = cursor
         self.last_next_cursor: str | None = None
 
+        page_number = 0
         while True:
+            page_number += 1
             params: dict[str, Any] = {
                 "limit": page_size,
                 "direction": direction,
@@ -186,6 +190,11 @@ class LimitlessClient:
             body = resp.json()
             page_items: list[dict[str, Any]] = body.get("data", {}).get("lifelogs", []) or []
             collected.extend(page_items)
+            if progress_callback is not None:
+                try:
+                    progress_callback(page_number, len(collected))
+                except Exception:
+                    log.debug("Progress callback failed", exc_info=True)
 
             if limit is not None and len(collected) >= limit:
                 return collected[:limit]

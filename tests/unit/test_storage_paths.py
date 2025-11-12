@@ -44,7 +44,29 @@ def test_save_and_load_roundtrip(tmp_path: Path):
         "updatedAt": "2025-01-01T02:00:00Z",
     }
 
-    path = repo.save_lifelog(lifelog)
-    data = json.loads(Path(path).read_text())
+    result = repo.save_lifelog(lifelog)
+    data = json.loads(Path(result.path).read_text())
     assert data["id"] == "XYZ789"
 
+
+def test_save_reports_created_updated_and_unchanged(tmp_path: Path):
+    """save_lifelog should classify writes as created/updated/unchanged."""
+    from limitless_tools.storage.json_repo import JsonFileRepository
+
+    repo = JsonFileRepository(base_dir=str(tmp_path))
+    lifelog = {
+        "id": "SAME",
+        "title": "t",
+        "markdown": "md",
+        "contents": [],
+        "startTime": "2025-01-01T00:00:00Z",
+        "endTime": "2025-01-01T01:00:00Z",
+        "isStarred": True,
+        "updatedAt": "2025-01-01T02:00:00Z",
+    }
+    first = repo.save_lifelog(lifelog)
+    changed = dict(lifelog)
+    changed["title"] = "updated title"
+    second = repo.save_lifelog(changed)
+    third = repo.save_lifelog(changed)
+    assert first.status == "created" and second.status == "updated" and third.status == "unchanged"

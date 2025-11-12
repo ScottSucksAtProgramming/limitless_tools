@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -21,6 +22,24 @@ def _load_json(path: Path) -> object | None:
         log.debug("Failed to read JSON from %s: %s", path, exc)
         return None
 
+@dataclass
+class SaveReport:
+    created: int = 0
+    updated: int = 0
+    unchanged: int = 0
+
+    def record(self, status: str) -> None:
+        if status == "created":
+            self.created += 1
+        elif status == "updated":
+            self.updated += 1
+        else:
+            self.unchanged += 1
+
+    @property
+    def total(self) -> int:
+        return self.created + self.updated + self.unchanged
+
 
 @dataclass
 class LifelogService:
@@ -30,6 +49,7 @@ class LifelogService:
     client: LimitlessClient | None = None
     repo: JsonFileRepository | None = None
     http_timeout: float | None = None
+    last_report: SaveReport | None = None
 
     def fetch(
         self,
@@ -44,6 +64,7 @@ class LifelogService:
         timezone: str | None = None,
         is_starred: bool | None = None,
         batch_size: int = 50,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> list[str]:
         """Fetch lifelogs from API and save them to JSON files. Returns saved file paths."""
 
@@ -65,12 +86,17 @@ class LifelogService:
             timezone=timezone,
             is_starred=is_starred,
             batch_size=batch_size,
+            progress_callback=progress_callback,
         )
 
+        report = SaveReport()
         saved_paths: list[str] = []
         for item in lifelogs:
-            saved_paths.append(repo.save_lifelog(item))
+            save_result = repo.save_lifelog(item)
+            saved_paths.append(save_result.path)
+            report.record(save_result.status)
 
+        self.last_report = report
         return saved_paths
 
     def sync(
@@ -82,6 +108,7 @@ class LifelogService:
         timezone: str | None = None,
         is_starred: bool | None = None,
         batch_size: int = 50,
+        progress_callback: Callable[[int, int], None] | None = None,
     ) -> list[str]:
         client = self.client or LimitlessClient(
             api_key=self.api_key or "",
@@ -121,13 +148,16 @@ class LifelogService:
             is_starred=is_starred,
             batch_size=batch_size,
             cursor=(sig_state.get("lastCursor") or st.get("lastCursor")) if not any([date, start, end]) else None,
+            progress_callback=progress_callback,
         )
 
+        report = SaveReport()
         saved_paths: list[str] = []
         index_rows: list[dict[str, str | bool | None]] = []
         for ll in lifelogs:
-            p = repo.save_lifelog(ll)
-            saved_paths.append(p)
+            save_result = repo.save_lifelog(ll)
+            saved_paths.append(save_result.path)
+            report.record(save_result.status)
             index_rows.append(
                 {
                     "id": ll.get("id"),
@@ -136,7 +166,7 @@ class LifelogService:
                     "endTime": ll.get("endTime"),
                     "isStarred": ll.get("isStarred"),
                     "updatedAt": ll.get("updatedAt"),
-                    "path": p,
+                    "path": save_result.path,
                 }
             )
 
@@ -175,6 +205,7 @@ class LifelogService:
             st["signatures"] = signatures
         state_repo.save(st)
 
+        self.last_report = report
         return saved_paths
 
     def list_local(

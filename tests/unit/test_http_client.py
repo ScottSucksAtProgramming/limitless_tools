@@ -103,3 +103,50 @@ def test_pagination_combines_pages_and_limit():
     client2 = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session2)
     only_one = client2.get_lifelogs(limit=1)
     assert [x["id"] for x in only_one] == ["a"]
+
+
+def test_progress_callback_gets_called_per_page():
+    """progress_callback should receive page numbers and running totals."""
+    from limitless_tools.http.client import LimitlessClient
+
+    page1 = {
+        "data": {
+            "lifelogs": [
+                {
+                    "id": "a",
+                    "title": "t1",
+                    "markdown": None,
+                    "contents": [],
+                    "startTime": "2025-01-01T01:00:00Z",
+                    "endTime": "2025-01-01T02:00:00Z",
+                    "isStarred": False,
+                    "updatedAt": "2025-01-01T00:00:00Z",
+                }
+            ]
+        },
+        "meta": {"lifelogs": {"nextCursor": "NEXT", "count": 1}},
+    }
+    page2 = {
+        "data": {
+            "lifelogs": [
+                {
+                    "id": "b",
+                    "title": "t2",
+                    "markdown": None,
+                    "contents": [],
+                    "startTime": "2025-01-02T01:00:00Z",
+                    "endTime": "2025-01-02T02:00:00Z",
+                    "isStarred": False,
+                    "updatedAt": "2025-01-02T00:00:00Z",
+                }
+            ]
+        },
+        "meta": {"lifelogs": {"nextCursor": None, "count": 1}},
+    }
+    session = FakeSession([page1, page2])
+    client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)
+
+    seen: list[tuple[int, int]] = []
+
+    _ = client.get_lifelogs(limit=None, progress_callback=lambda page_no, total: seen.append((page_no, total)))
+    assert seen == [(1, 1), (2, 2)]

@@ -77,7 +77,7 @@ mypy limitless_tools
 
 ## CLI commands
 
-All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`). HTTP requests use a 30-second timeout by default; override with `LIMITLESS_HTTP_TIMEOUT` or the `http_timeout` config key. Use `-v/--verbose` to emit structured JSON debug logs to stderr for troubleshooting.
+All commands read `LIMITLESS_API_KEY` from the environment. Default data dir is `~/limitless_tools/data/lifelogs` (override with `--data-dir` or `LIMITLESS_DATA_DIR`). Default batch size is `50` (override with `--batch-size`). HTTP requests use a 30-second timeout by default; override with `LIMITLESS_HTTP_TIMEOUT` or the `http_timeout` config key. Use `-v/--verbose` to emit structured JSON debug logs to stderr for troubleshooting. Long-running `fetch`/`sync` runs print progress lines and a completion summary (new/updated/unchanged counts) to stderr so you always know the job status without polluting stdout/JSON output.
 
 - Fetch latest N lifelogs (saves JSON files): defaults include markdown and headings. Use `--json` to print a JSON array of saved item summaries to stdout.
 

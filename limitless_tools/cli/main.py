@@ -4,6 +4,8 @@ import argparse
 import logging
 import os
 import sys
+import time
+from collections.abc import Callable
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -11,7 +13,61 @@ from limitless_tools.config.config import default_config_path, get_profile, load
 from limitless_tools.config.env import load_env
 from limitless_tools.config.logging import setup_logging
 from limitless_tools.config.paths import default_data_dir, expand_path
-from limitless_tools.services.lifelog_service import LifelogService
+from limitless_tools.services.lifelog_service import LifelogService, SaveReport
+
+
+def _stderr_line(message: str) -> None:
+    sys.stderr.write(f"{message}\n")
+    sys.stderr.flush()
+
+
+class ProgressReporter:
+    def __init__(self, action: str):
+        self.action = action
+        self._start_ts: float | None = None
+        self._callback: Callable[[int, int], None] | None = None
+
+    def start(self) -> None:
+        if self._start_ts is None:
+            self._start_ts = time.perf_counter()
+            _stderr_line(f"{self.action.title()} started...")
+
+    def make_callback(self) -> Callable[[int, int], None]:
+        if self._callback is None:
+            def _cb(page: int, total: int) -> None:
+                _stderr_line(
+                    f"{self.action.title()} in progress: {total} lifelogs processed (page {page})"
+                )
+
+            self._callback = _cb
+        return self._callback
+
+    def finish(self, report: SaveReport | None) -> None:
+        if self._start_ts is None:
+            self.start()
+        duration = (time.perf_counter() - self._start_ts) if self._start_ts is not None else None
+        _stderr_line(_format_summary(self.action, report, duration))
+
+
+def _format_summary(action: str, report: SaveReport | None, duration: float | None) -> str:
+    title = action.title()
+    duration_text = ""
+    if duration is not None:
+        duration_text = f" in {duration:.1f}s"
+    if report is None:
+        return f"{title} complete{duration_text}."
+    if report.created or report.updated:
+        parts: list[str] = []
+        if report.created:
+            parts.append(f"{report.created} new")
+        if report.updated:
+            parts.append(f"{report.updated} updated")
+        if report.unchanged:
+            parts.append(f"{report.unchanged} unchanged")
+        return f"{title} complete{duration_text}: {', '.join(parts)}."
+    if report.unchanged:
+        return f"{title} complete{duration_text}: no changes (data already up to date)."
+    return f"{title} complete{duration_text}: no lifelogs returned."
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -181,12 +237,15 @@ def main(argv: list[str] | None = None) -> int:
             data_dir=args.data_dir,
             http_timeout=resolved_http_timeout,
         )
+        reporter = ProgressReporter("fetch")
+        reporter.start()
         saved = service.fetch(
             limit=args.limit,
             direction=args.direction,
             include_markdown=args.include_markdown,
             include_headings=args.include_headings,
             batch_size=max(1, int(args.batch_size)),
+            progress_callback=reporter.make_callback(),
         )
         if args.json:
             import json as _json
@@ -206,6 +265,7 @@ def main(argv: list[str] | None = None) -> int:
                     log.debug("Skipping invalid saved lifelog %s: %s", p, exc)
                     continue
             print(_json.dumps(docs, ensure_ascii=False))
+        reporter.finish(getattr(service, "last_report", None))
         return 0
 
     if args.command == "sync":
@@ -224,6 +284,8 @@ def main(argv: list[str] | None = None) -> int:
             data_dir=args.data_dir,
             http_timeout=resolved_http_timeout,
         )
+        reporter = ProgressReporter("sync")
+        reporter.start()
         saved = service.sync(
             date=args.date,
             start=args.start,
@@ -231,6 +293,7 @@ def main(argv: list[str] | None = None) -> int:
             timezone=args.timezone,
             is_starred=True if args.starred_only else None,
             batch_size=max(1, int(args.batch_size)),
+            progress_callback=reporter.make_callback(),
         )
         if args.json:
             import json as _json
@@ -268,6 +331,7 @@ def main(argv: list[str] | None = None) -> int:
                 "items": items,
             }
             print(_json.dumps(result, ensure_ascii=False))
+        reporter.finish(getattr(service, "last_report", None))
         return 0
 
     if args.command == "list":

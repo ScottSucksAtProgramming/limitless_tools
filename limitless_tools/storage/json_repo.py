@@ -1,8 +1,15 @@
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
+
+
+@dataclass
+class SaveResult:
+    path: str
+    status: Literal["created", "updated", "unchanged"]
 
 
 class JsonFileRepository:
@@ -16,8 +23,22 @@ class JsonFileRepository:
         file_path = dir_path / f"lifelog_{lifelog.get('id')}.json"
         return str(file_path)
 
-    def save_lifelog(self, lifelog: dict[str, Any]) -> str:
+    def save_lifelog(self, lifelog: dict[str, Any]) -> SaveResult:
         path = Path(self.path_for_lifelog(lifelog))
         path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(lifelog, ensure_ascii=False, indent=2))
-        return str(path)
+        serialized = json.dumps(lifelog, ensure_ascii=False, indent=2)
+        status: Literal["created", "updated", "unchanged"]
+        if path.exists():
+            try:
+                existing = json.loads(path.read_text())
+            except (json.JSONDecodeError, OSError):
+                existing = None
+            if existing == lifelog:
+                status = "unchanged"
+            else:
+                status = "updated"
+        else:
+            status = "created"
+        if status != "unchanged":
+            path.write_text(serialized)
+        return SaveResult(str(path), status)

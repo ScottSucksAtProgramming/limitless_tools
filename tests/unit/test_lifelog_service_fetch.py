@@ -80,7 +80,8 @@ def test_service_fetch_saves_files(tmp_path: Path, monkeypatch):
     _ = service.fetch(limit=None, include_markdown=True, include_headings=True, direction="desc")
 
     saved = sorted([p.name for p in tmp_path.rglob("*.json")])
-    assert saved == ["lifelog_svcA.json", "lifelog_svcB.json"]
+    report = service.last_report
+    assert saved == ["lifelog_svcA.json", "lifelog_svcB.json"] and report and report.created == 2 and report.updated == 0
 
 
 def test_service_fetch_param_toggles_propagate(tmp_path: Path):
@@ -128,3 +129,23 @@ def test_service_passes_http_timeout_to_client(monkeypatch, tmp_path: Path):
     _ = service.fetch(limit=1)
 
     assert abs(float(captured["timeout"]) - 22.0) < 1e-6
+
+
+def test_service_last_report_tracks_unchanged(tmp_path: Path, monkeypatch):
+    """Fetching the same data twice should set last_report.unchanged."""
+    from limitless_tools.http.client import LimitlessClient
+    from limitless_tools.services import lifelog_service as svc_module
+
+    session = FakeSession(_make_pages())
+    client = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session)
+    service = svc_module.LifelogService(api_key="KEY", api_url="https://api.limitless.ai", data_dir=str(tmp_path), client=client)
+
+    _ = service.fetch(limit=None)
+    # Re-run fetch with identical responses by resetting session iterator
+    session2 = FakeSession(_make_pages())
+    client2 = LimitlessClient(api_key="KEY", base_url="https://api.limitless.ai", session=session2)
+    service.client = client2
+
+    _ = service.fetch(limit=None)
+    report = service.last_report
+    assert report and report.unchanged == 2 and report.created == 0 and report.updated == 0
