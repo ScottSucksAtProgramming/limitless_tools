@@ -2,6 +2,7 @@
 
 A Python 3.11+ library and CLI to fetch and store Limitless lifelogs locally as JSON. Built with TDD and clean, extensible architecture.
 
+[![PyPI](https://img.shields.io/pypi/v/limitless-tools.svg)](https://pypi.org/project/limitless-tools/)
 [![CI](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -50,24 +51,28 @@ python3 -m limitless_tools.cli.main fetch \
 
 ## Installation (macOS/Linux)
 
-Install from PyPI (after 0.1.0 ships) with:
+The project is published on PyPI; we recommend using an isolated environment to avoid PEP 668 “externally managed” errors.
+
+### CLI users (recommended)
 
 ```
-pip install limitless-tools
-# or install it into an isolated environment:
 pipx install limitless-tools
+limitless --help
 ```
 
-For contributor tooling plus an editable install:
+### Virtual environment workflow
+
+```
+python3 -m venv ~/.venvs/limitless-tools
+source ~/.venvs/limitless-tools/bin/activate
+python -m pip install --upgrade pip
+pip install limitless-tools
+```
+
+### Contributors
 
 ```
 pip install -e ".[dev]"
-```
-
-For local development you can keep an editable install around and run the console script directly:
-
-```
-pip install -e .
 limitless --help
 ```
 

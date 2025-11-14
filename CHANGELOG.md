@@ -6,7 +6,8 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 
 ## [Unreleased]
 
-_Nothing yet._
+### Added
+- README badge + installation guidance now point to the published PyPI package (pipx/venv instructions).
 
 ## [0.1.0] - 2025-11-14
 
