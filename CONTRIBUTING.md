@@ -15,6 +15,12 @@ python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 ```
 
+Or install the editable package plus dev extras in one step:
+
+```
+pip install -e ".[dev]"
+```
+
 - Environment:
   - Required: `LIMITLESS_API_KEY`
   - Optional: `LIMITLESS_API_URL`, `LIMITLESS_DATA_DIR`, `LIMITLESS_TZ`
@@ -75,4 +81,3 @@ Please see `CODE_OF_CONDUCT.md`. Report unacceptable behavior per the Enforcemen
 
 ## Questions / Help
 Open a GitHub issue with context (environment, version, steps) or start a discussion thread if enabled.
-

@@ -13,6 +13,12 @@ pip install -r requirements-dev.txt
 pip install build twine
 ```
 
+Run the automated release gate before tagging:
+
+```
+scripts/release_check.sh
+```
+
 ## Versioning
 - Follow SemVer.
 - Update `pyproject.toml` `version` and `CHANGELOG.md`.
@@ -66,6 +72,7 @@ python -m twine upload dist/*
 - Update GitHub release notes; link to CHANGELOG entries
 - Verify `pipx install limitless-tools` works on a clean machine
 - (Optional) Homebrew: evaluate providing a formula using a Python venv with vendored deps
+- Documented support: releases are currently smoke-tested on macOS (Sonoma) and Ubuntu LTS; call out Windows as experimental until tested.
 
 ## CI
 - CI should run ruff/mypy/pytest on PRs and main. See `.github/workflows/ci.yml` (added separately).
@@ -73,4 +80,3 @@ python -m twine upload dist/*
 ## Notes
 - Do not publish secrets. Ensure `.env` and local data are ignored by git.
 - Consider releasing to TestPyPI for validation before PyPI.
-

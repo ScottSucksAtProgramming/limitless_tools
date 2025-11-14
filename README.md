@@ -6,6 +6,8 @@ A Python 3.11+ library and CLI to fetch and store Limitless lifelogs locally as 
 [![CodeQL](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/ScottSucksAtProgramming/limitless_tools/actions/workflows/codeql.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+_Tested on macOS (14.x) and Ubuntu 22.04; Windows support is planned._
+
 - PRD: docs/PRD.md
 - Default data dir: `~/limitless_tools/data/lifelogs` (configurable)
 
@@ -19,6 +21,8 @@ source .venv/bin/activate
 python3 -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 ```
+
+Prefer `pip install -e ".[dev]"` if you want an editable install with all contributor tooling in one step.
 
 2) Configure environment (copy `.env.example` to `.env` and fill in values or export env vars):
 
@@ -44,14 +48,20 @@ python3 -m limitless_tools.cli.main fetch \
     --include-headings
 ```
 
-## Installation
+## Installation (macOS/Linux)
 
-Once published, install the CLI with:
+Install from PyPI (after 0.1.0 ships) with:
 
 ```
 pip install limitless-tools
 # or install it into an isolated environment:
 pipx install limitless-tools
+```
+
+For contributor tooling plus an editable install:
+
+```
+pip install -e ".[dev]"
 ```
 
 For local development you can keep an editable install around and run the console script directly:
@@ -60,6 +70,8 @@ For local development you can keep an editable install around and run the consol
 pip install -e .
 limitless --help
 ```
+
+> Windows support is planned, but the release artifacts are currently smoke-tested on macOS (Sonoma) and Ubuntu LTS only.
 
 ## Configuration
 
@@ -79,6 +91,12 @@ python -m limitless_tools.cli.main configure \
 ```
 
 Notes: You can define multiple profiles (e.g., `[default]`, `[work]`) and select with `--profile work`. Precedence: CLI flags > environment variables > config file > built‑in defaults.
+
+## Supported platforms
+
+- Verified locally on macOS Sonoma (arm64) and Ubuntu 22.04 (x86_64) via CI + smoke tests.
+- Wheel/venv smoke tests run as part of the release checklist (`scripts/release_check.sh`).
+- Windows support is on the roadmap; we’re tracking path/timezone quirks before advertising it as fully supported.
 
 ## Notes
 
@@ -126,6 +144,10 @@ Run locally:
 ruff check .
 mypy limitless_tools
 ```
+
+## Release checks
+
+Use `scripts/release_check.sh` before tagging a release. It runs `ruff`, `mypy`, `pytest`, builds sdist/wheel, validates with `twine check`, and performs a fresh virtualenv smoke test of the wheel on macOS/Linux. Override the Python interpreter via `PYTHON_BIN=/path/to/python scripts/release_check.sh` if needed.
 
 ## Security & Privacy
 

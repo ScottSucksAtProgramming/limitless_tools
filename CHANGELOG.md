@@ -9,6 +9,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Added
 - Pre‑release docs: CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, RELEASING
 - GitHub issue and PR templates
+- Package polish: importlib-based `__version__`, dev/test extras, automated `scripts/release_check.sh`, and docs noting macOS/Linux verification with Windows on the roadmap
 
 ## [0.1.0] - 2025-11-09
 
@@ -20,4 +21,3 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Config: env/.env integration, TOML config with profiles and precedence, timezone helpers, JSON logging
 - Local search over index (regex/fuzzy) and CSV/Markdown export features
 - TDD unit tests across layers (client, services, storage, CLI)
-
